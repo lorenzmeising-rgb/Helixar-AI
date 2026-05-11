@@ -28,6 +28,8 @@ RULE_SOURCES_BIOPHYS = {
 RULE_SOURCES = {
     "switch_chem_to_biotech": "Anastas & Warner, Green Chemistry: Theory and Practice, Oxford Univ. Press 1998 (ISBN 978-0-19-850698-0); Sheldon, Green Chem. 2017 — E-factor analysis (doi:10.1039/C7GC00149E)",
     "step_consolidation": "Vollhardt & Schore, Organic Chemistry, 8th ed. 2018, Macmillan/Freeman (ISBN 978-1-319-07945-1) — telescoping and step economy; Newhouse et al., Angew. Chem. Int. Ed. 2009 (doi:10.1002/anie.200806239)",
+    "spps_to_recombinant": "Bray BL., Nat. Rev. Drug Discov. 2003 — Large-scale manufacture of peptide therapeutics by chemical synthesis (doi:10.1038/nrd1133); Sanchez-Garcia et al., Microb. Cell Fact. 2016 — Recombinant pharmaceuticals from microbial cells (doi:10.1186/s12934-016-0437-3)",
+    "biotech_titer_optimization": "Wurm FM., Nat. Biotechnol. 2004 — Production of recombinant protein therapeutics in CHO (doi:10.1038/nbt1026); Lim et al., Curr. Opin. Biotechnol. 2010 — High-yield expression systems for biopharmaceuticals (doi:10.1016/j.copbio.2010.07.005)",
     "purity_gap": "Walsh G., Pharmaceutical Biotechnology, 2nd ed. 2018, Wiley (ISBN 978-1-119-11518-7) — API-grade purification standards",
     "industrial_no_bioreactor": "Doran, Bioprocess Engineering Principles, 2nd ed. 2013, Academic Press (ISBN 978-0-12-220851-5) — bioreactor scale-up",
     "strict_waste_chemical": "Prat et al., Green Chem. 2016 — CHEM21 Solvent Selection Guide (doi:10.1039/C5GC01008J); Anastas & Warner, Green Chemistry: Theory and Practice, Oxford Univ. Press 1998 (ISBN 978-0-19-850698-0)",
@@ -72,6 +74,70 @@ ACTION_TEXTS = {
                 "time-to-market 6–18 months for strain optimization."
             ),
             "prerequisites": "Bioreactor ≥ 1 L, fermentation know-how, possibly strain license.",
+        },
+    },
+    "spps_to_recombinant": {
+        "de": {
+            "title": "Von SPPS zu rekombinanter Produktion wechseln ({steps} Kupplungen)",
+            "rationale": (
+                "SPPS-Schrittzahl entspricht der Sequenzlänge — sie lässt sich nicht durch "
+                "Prozessoptimierung reduzieren. Bei {steps} Aminosäure-Kupplungen "
+                "akkumulieren Yield-Verluste exponentiell. Rekombinante Expression umgeht "
+                "diese Limitation und ist für längere Peptide (> 15 AS) kommerziell etabliert."
+            ),
+            "expected_impact": (
+                "Gesamtausbeute steigt von typ. 30–60 % (SPPS) auf 80–95 % (rekombinant); "
+                "COGS-Reduktion 50–80 %. Lösungsmittelverbrauch sinkt drastisch (kein DMF/DCM). "
+                "Trade-off: Time-to-Market 12–24 Monate für Expressions-System-Etablierung."
+            ),
+            "prerequisites": "Fermentations-Infrastruktur (≥ 5 L Bioreaktor), Molekularbiologie-Know-how, ggf. Fusionsprotein-Strategie für schwierige Sequenzen.",
+        },
+        "en": {
+            "title": "Switch from SPPS to recombinant production ({steps} couplings)",
+            "rationale": (
+                "SPPS step count equals sequence length — it cannot be reduced by process "
+                "optimization. At {steps} amino-acid couplings, yield losses accumulate "
+                "exponentially. Recombinant expression bypasses this and is commercially "
+                "established for longer peptides (> 15 aa)."
+            ),
+            "expected_impact": (
+                "Overall yield rises from typically 30–60 % (SPPS) to 80–95 % (recombinant); "
+                "COGS reduction 50–80 %. Solvent use drops dramatically (no DMF/DCM). "
+                "Trade-off: 12–24 months time-to-market for expression-system establishment."
+            ),
+            "prerequisites": "Fermentation infrastructure (≥ 5 L bioreactor), molecular-biology know-how, possibly fusion-protein strategy for difficult sequences.",
+        },
+    },
+    "biotech_titer_optimization": {
+        "de": {
+            "title": "Fermentations-Titer und produktive Wirtschaftlichkeit optimieren",
+            "rationale": (
+                "Bei biotechnologischer Produktion von Peptiden/Proteinen dominieren Bioreaktor-Footprint, "
+                "Medienkosten und Aufarbeitung die Herstellkosten. Höhere Titer (g/L) reduzieren alle drei "
+                "proportional. Hebel: Stammoptimierung (CRISPR-Engineering, Promoter-Tuning), Fed-Batch- "
+                "oder Perfusions-Strategien, Medien-DoE."
+            ),
+            "expected_impact": (
+                "Titer-Verdopplung (typisch erreichbar in 6–12 Monaten) halbiert Bioreaktor-Stunden "
+                "und Medienkosten — entspricht typischerweise 30–50 % Senkung der gesamten COGS. "
+                "Skalierungs-Risiken sinken, weil weniger Equipment für gleiche Output benötigt wird."
+            ),
+            "prerequisites": "Fermentations-Labor (≥ 1 L), Analytik für Titer-Bestimmung (HPLC/ELISA), Stammbank/Engineering-Zugang.",
+        },
+        "en": {
+            "title": "Optimize fermentation titer and process economics",
+            "rationale": (
+                "In biotech production of peptides/proteins, bioreactor footprint, media cost and "
+                "downstream processing dominate COGS. Higher titers (g/L) reduce all three proportionally. "
+                "Levers: strain engineering (CRISPR, promoter tuning), fed-batch or perfusion strategies, "
+                "media DoE."
+            ),
+            "expected_impact": (
+                "Titer doubling (typically achievable in 6–12 months) halves bioreactor hours and media "
+                "cost — corresponds to ~30–50 % overall COGS reduction. Scale-up risks decrease because "
+                "less equipment is needed for the same output."
+            ),
+            "prerequisites": "Fermentation lab (≥ 1 L), analytics for titer measurement (HPLC/ELISA), strain-bank / engineering access.",
         },
     },
     "step_consolidation": {
@@ -626,6 +692,29 @@ def _rule_step_consolidation(p: Dict[str, Any], lang: str) -> List[Dict[str, Any
     steps = p.get("number_of_steps")
     if not p.get("has_existing_process") or not steps:
         return out
+
+    # Bug D: SPPS (Solid-Phase Peptide Synthesis) detection.
+    # When a peptide is produced via chemical synthesis with many steps, the
+    # step count = number of amino-acid couplings = sequence length, which is
+    # a hard biological constraint. Suggesting "reduce 30 → 28 steps" is
+    # nonsensical there. The right advice is to switch to recombinant
+    # production or evaluate a shorter analogue, not to telescope steps.
+    mtype = (p.get("molecule_type") or "").lower()
+    method = (p.get("method") or "").lower()
+    is_spps = (mtype == "peptide" and method == "chemical" and int(steps) >= 15)
+    if is_spps:
+        # Emit a route-switch suggestion instead of a step-count consolidation.
+        if lang == "en":
+            cur = f"SPPS with {int(steps)} couplings — step count is fixed by the peptide sequence; each coupling loses 1–5 % yield (overall yield typically 30–60 %)"
+            opt = "Recombinant production (E. coli / yeast fusion expression with protease cleavage): 80–95 % overall yield, COGS reduction of 50–80 % for sequences > 15 aa, time-to-market 12–24 months"
+        else:
+            cur = f"SPPS mit {int(steps)} Kupplungen — Schrittzahl ist durch die Peptidsequenz vorgegeben; jede Kupplung verliert 1–5 % Yield (Gesamtausbeute typ. 30–60 %)"
+            opt = "Rekombinante Produktion (E. coli / Hefe-Fusionsexpression mit Protease-Spaltung): 80–95 % Gesamtausbeute, COGS-Senkung von 50–80 % für Sequenzen > 15 AS, Time-to-Market 12–24 Monate"
+        out.append(_make("spps_to_recombinant", lang, effort="high",
+                         current_state=cur, optimized_state=opt,
+                         steps=int(steps)))
+        return out
+
     if int(steps) >= 4:
         target = max(int(steps) - 2, 2)
         gain_pct = round((1.15 ** 2 - 1) * 100)
@@ -791,6 +880,56 @@ def _rule_raw_materials(p: Dict[str, Any], lang: str) -> List[Dict[str, Any]]:
     return out
 
 
+def _rule_biotech_titer_optimization(p: Dict[str, Any], lang: str) -> List[Dict[str, Any]]:
+    """Bug F fallback: biomolecule production with biotech method has implicit cost
+    pressure (bioreactor, media, downstream). When NO other rule produces an
+    action but cost signals are present, suggest titer/yield optimization —
+    the most universally applicable improvement for fermentation-based COGS.
+
+    Triggers when:
+    - molecule is peptide or protein
+    - method is biotechnological
+    - scale is at least pilot (i.e. not pure lab-scale R&D)
+    - at least one of: raw_cost ≥ medium, purity ≥ 99 %, scale = industrial,
+      multi-domain protein, or has_ptm
+    """
+    out: List[Dict[str, Any]] = []
+    mtype = (p.get("molecule_type") or "").lower()
+    if mtype not in ("peptide", "protein"):
+        return out
+    method = (p.get("method") or "").lower()
+    if method not in ("biotechnological", "biotech"):
+        return out
+    scale = (p.get("scale") or "").lower()
+    if scale not in ("pilot", "industrial"):
+        return out
+    raw_cost = (p.get("raw_material_cost") or "").lower()
+    desired_purity = (p.get("desired_purity") or "").lower()
+    has_ptm = bool(p.get("has_ptm"))
+    num_domains = int(p.get("num_domains") or 0)
+    eur_per_kg = p.get("raw_material_cost_eur_per_kg")
+    cost_signal = (
+        raw_cost in ("medium", "high")
+        or desired_purity in (">99%", "very high")
+        or scale == "industrial"
+        or has_ptm
+        or num_domains >= 2
+        or (isinstance(eur_per_kg, (int, float)) and eur_per_kg >= 50.0)
+    )
+    if not cost_signal:
+        return out
+
+    if lang == "en":
+        cur = "Biotech production at pilot/industrial scale — bioreactor footprint, media and downstream dominate COGS; baseline titer not optimised"
+        opt = "Strain engineering + fed-batch/perfusion + media DoE → typically 2× titer in 6–12 months, ~30–50 % COGS reduction"
+    else:
+        cur = "Biotechnologische Produktion im Pilot-/Industriemaßstab — Bioreaktor-Footprint, Medien und Aufarbeitung dominieren die Herstellkosten; Basis-Titer nicht optimiert"
+        opt = "Stamm-Engineering + Fed-Batch/Perfusion + Medien-DoE → typ. Titer-Verdopplung in 6–12 Monaten, ~30–50 % Senkung der COGS"
+    out.append(_make("biotech_titer_optimization", lang, effort="high",
+                     current_state=cur, optimized_state=opt))
+    return out
+
+
 def build_recommended_actions(process_input: Dict[str, Any], lang: str = "de") -> List[Dict[str, Any]]:
     """Apply all rules and return the deduplicated list of recommended actions."""
     if not isinstance(process_input, dict):
@@ -811,6 +950,8 @@ def build_recommended_actions(process_input: Dict[str, Any], lang: str = "de") -
         _rule_biophys_low_tagg,
         _rule_biophys_multi_domain,
         _rule_biophys_ptm,
+        # Bug F: catch-all for biomolecules with cost pressure
+        _rule_biotech_titer_optimization,
     ):
         try:
             actions.extend(rule(process_input, lang))

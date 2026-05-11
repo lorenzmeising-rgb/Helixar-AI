@@ -1069,10 +1069,28 @@ class DecisionEngine:
                 pass
 
             # Waste constraints
+            # Bug B: strict_waste was bumping risk by +2 unconditionally — that's wrong
+            # for commodity small-molecule processes (Aspirin etc.) where the actual
+            # waste profile is benign (no halogenated solvents, no hazardous reagents).
+            # We keep the cost bump (compliance always costs SOMETHING) but only bump
+            # risk when there's a real hazard signal.
             try:
                 if strict_waste:
                     costScore += 2
-                    riskScore += 2
+                    # Hazard signals that justify a risk bump:
+                    #   - chemical method with expensive raw materials (often specialty / halogenated)
+                    #   - many synthesis steps (more reagents, more solvent in workup)
+                    #   - high intrinsic toxicity from structure
+                    #   - natural-product extraction (heavy solvent loads)
+                    waste_is_hazardous = (
+                        (method in ("chemical", "chem", "chemical synthesis") and raw_cost == "high")
+                        or (steps and int(steps) >= 4 and method in ("chemical", "chem"))
+                        or properties.get("base_toxicity") == "high"
+                        or properties.get("toxicity") == "high"
+                        or method in ("extraction", "extract", "extraction-based")
+                    )
+                    if waste_is_hazardous:
+                        riskScore += 2
                     if "Strict waste regulations increase process cost and complexity" not in issues:
                         issues.append("Strict waste regulations increase process cost and complexity")
             except Exception:
@@ -1129,16 +1147,49 @@ class DecisionEngine:
                 pass
 
             # MOLECULE TYPE EFFECTS
+            # Bug E: the previous version bumped protein/peptide cost regardless of
+            # actual drivers, which over-flags simple industrial commodities like
+            # microbial lipase (€15/kg at 50 t/year — by every published price
+            # benchmark a LOW-cost product). We now require at least one real cost
+            # driver before applying the type-based bump.
             try:
                 if molecule_type == "protein":
-                    costScore += 3
-                    riskScore += 3
+                    # Real protein cost drivers: complex folding, multiple disulfides,
+                    # PTMs that need eukaryotic host, expensive raw materials,
+                    # antibody subtype, high purity target.
+                    protein_cost_drivers = (
+                        str(p.get("folding_complexity") or "").lower() == "high"
+                        or int(p.get("num_disulfides") or 0) >= 3
+                        or int(p.get("num_domains") or 0) >= 3
+                        or bool(p.get("has_ptm"))
+                        or (p.get("molecule_subtype") or "").lower() == "antibody"
+                        or raw_cost in ("medium", "high")
+                        or desired_purity in (">99%", "very high")
+                    )
+                    if protein_cost_drivers:
+                        costScore += 3
+                        riskScore += 3
+                    else:
+                        # commodity microbial enzyme: minor type adjustment only
+                        riskScore += 1
                 elif molecule_type == "natural_product":
+                    # Natural products typically have real cost drivers (complex
+                    # mixtures, extraction overhead). Keep the bump.
                     costScore += 3
                     riskScore += 2
                 elif molecule_type == "peptide":
-                    costScore += 1
-                    riskScore += 1
+                    # Linear simple peptides (tripeptide glutathione) are cheap;
+                    # cyclic / multi-disulfide / long-chain peptides are not.
+                    peptide_cost_drivers = (
+                        int(p.get("num_disulfides") or 0) >= 2
+                        or (p.get("molecule_subtype") or "").lower() == "cyclic"
+                        or (steps and int(steps) >= 10)
+                        or raw_cost in ("medium", "high")
+                    )
+                    if peptide_cost_drivers:
+                        costScore += 1
+                        riskScore += 1
+                    # else: simple linear peptide — no automatic bump
             except Exception:
                 pass
 
@@ -1557,20 +1608,40 @@ class DecisionEngine:
                 elif scale == "industrial":
                     if "Scaling introduces operational and mixing challenges" not in issues:
                         issues.append("Scaling introduces operational and mixing challenges")
-                    # Conditional cost bump — only when there is a real cost driver
+                    # Conditional cost bump — only when there is a real cost driver.
+                    # Bug E: removed "molecule_type in ('protein','peptide')" from this
+                    # list — type alone should NOT push cost to "high" when the
+                    # underlying economics are clean (commodity microbial enzymes).
+                    # Type-driven complexity is now captured via folding_complexity,
+                    # num_disulfides, subtype=antibody, etc. above.
+                    # Bug E refinement: `purification_difficulty="high"` is a structural
+                    # property that triggers for ALL proteins/peptides by default — but it
+                    # only translates to high COST when the actual purification chain is
+                    # expensive (HPLC/affinity capture). For commodity industrial enzymes,
+                    # the real chain is membrane filtration + UF — cheap. So we only
+                    # accept `purification_difficulty == "very high"` (truly hard:
+                    # carotenoids, complex natural products, etc.) as a standalone driver.
                     _scale_cost_drivers = (
-                        molecule_type in ("protein", "peptide")
-                        or properties.get("complexity") == "high"
-                        or properties.get("purification_difficulty") in ("high", "very high")
+                        properties.get("complexity") == "high"
+                        or properties.get("purification_difficulty") == "very high"
                         or str(p.get("raw_material_cost") or "").lower() in ("high", "very high")
                         or (isinstance(p.get("raw_material_cost_eur_per_kg"), (int, float))
                             and float(p.get("raw_material_cost_eur_per_kg")) > 500.0)
                         or steps > 3
+                        or (p.get("molecule_subtype") or "").lower() == "antibody"
+                        or str(p.get("folding_complexity") or "").lower() == "high"
+                        or int(p.get("num_disulfides") or 0) >= 3
                     )
                     if _scale_cost_drivers:
                         cost = "high"
                     # else: keep current cost level (likely low/medium for simple processes)
-                    risk = bump(risk, 2)
+                    # Bug A/B: risk bump also conditional — only when actual drivers exist,
+                    # otherwise industrial commodities (Aspirin, Ethanol, industrial Lipase)
+                    # get a single bump from the scale category alone, not two extra levels.
+                    if _scale_cost_drivers:
+                        risk = bump(risk, 2)
+                    else:
+                        risk = bump(risk, 1)
             except Exception:
                 pass
 
@@ -1820,12 +1891,21 @@ class DecisionEngine:
             tradeoffs: List[str] = []
 
             # Purity × Purification
-            if desired_purity not in ("standard", "") and properties.get("purification_difficulty") == "high":
+            # Bug E refinement: bump to "very high" only when both purity target AND
+            # purification difficulty are truly extreme — for "high" + "high" the
+            # cost is real but a single notch (not jumping to very-high) is more
+            # honest. Avoids overstating peptides like Glutathione (98% purity +
+            # peptide pur_diff="high") as "very high" cost.
+            if desired_purity in (">99%", "very high") and properties.get("purification_difficulty") == "very high":
                 adjustedCost = "very high"
                 adjustedRisk = "high"
                 if "High purity requirement combined with difficult purification significantly increases cost" not in issues:
                     issues.append("High purity requirement combined with difficult purification significantly increases cost")
                 tradeoffs.append("High purity requirement combined with difficult purification significantly increases cost and risk")
+            elif desired_purity not in ("standard", "") and properties.get("purification_difficulty") == "high":
+                # Single-notch bump only — keep adjustedCost realistic
+                adjustedCost = bump(adjustedCost, 1) if adjustedCost in levels else "high"
+                tradeoffs.append("Higher purity combined with structurally difficult purification raises cost by one notch")
 
             # Steps × Complexity
             if steps > 5 and properties.get("complexity") == "high":
@@ -1980,16 +2060,82 @@ class DecisionEngine:
                     cost_reasons.append("expensive starting materials increase COGS")
                 cost_explanation = "; ".join(cost_reasons) if cost_reasons else "Cost driven by standard materials and moderate downstream operations"
 
+                # Bug A: risk_explanation must mirror the same drivers that bumped
+                # riskScore (line ~1010-1230). Previously this only checked a
+                # handful of conditions, leading to "risk = very high" labels
+                # being shown next to "Risk is manageable" explanations — a
+                # credibility-killer for a tool aimed at pharma reviewers.
                 risk_reasons = []
+
+                # --- Structural / biophysical drivers ---
                 if properties.get("stability") == "low":
-                    risk_reasons.append("low molecular stability increases degradation risk during processing and storage")
+                    risk_reasons.append("geringe molekulare Stabilität erhöht das Degradationsrisiko während Prozess und Lagerung")
                 if isBiomolecule and str(p.get("folding_complexity") or "").lower() == "high":
-                    risk_reasons.append("complex folding increases sensitivity to process parameters and risk of misfolding")
+                    risk_reasons.append("komplexe Faltung erhöht die Empfindlichkeit gegenüber Prozessparametern und das Misfolding-Risiko")
+                if isBiomolecule and str(p.get("aggregation_risk") or "").lower() == "high":
+                    risk_reasons.append("hohes Aggregationsrisiko erhöht Ausbeute-Verluste und Polishing-Aufwand")
+                if isBiomolecule and str(p.get("biophysical_stability") or "").lower() == "low":
+                    risk_reasons.append("geringe biophysikalische Stabilität erfordert Kühlkette und enge Prozessfenster")
+                if properties.get("base_toxicity") == "high" or properties.get("toxicity") == "high":
+                    risk_reasons.append("hohe intrinsische Toxizität erhöht Containment- und Handhabungs-Anforderungen")
+
+                # --- Process drivers ---
+                if steps and int(steps) > 5:
+                    risk_reasons.append(f"hohe Schrittzahl ({int(steps)}) multipliziert Fehlerquellen über die Prozesskette")
+                if desired_purity in (">99%", "very high"):
+                    risk_reasons.append("sehr hohe Reinheitsziele erhöhen das Risiko von Out-of-Spec-Batches in der Endkontrolle")
+
+                # --- Scale drivers (only when actual complexity exists, mirroring conditional bump) ---
+                if scale == "industrial":
+                    industrial_has_drivers = (
+                        (steps and int(steps) > 3)
+                        or properties.get("complexity") == "high"
+                        or properties.get("purification_difficulty") in ("high", "very high")
+                        or raw_cost == "high"
+                        or molecule_type in ("protein", "peptide")
+                    )
+                    if industrial_has_drivers:
+                        if steps and int(steps) > 5:
+                            risk_reasons.append("industrielle Skalierung in Kombination mit langem Synthesepfad multipliziert operatives Risiko")
+                        else:
+                            risk_reasons.append("industrielle Skalierung kombiniert mit Komplexitäts-Treibern erhöht Folge-Risiken bei Prozessstörungen")
+                    # If no drivers (e.g. Aspirin commodity at industrial scale),
+                    # we deliberately add NO scale-related risk reason — the
+                    # process is well-established.
+
+                # --- Sourcing drivers ---
+                if raw_avail == "low":
+                    risk_reasons.append("eingeschränkte Rohstoff-Verfügbarkeit erhöht Versorgungs- und Liefertermin-Risiko")
+
+                # --- Waste / regulatory drivers (only when hazardous, mirroring conditional bump) ---
                 if strict_waste:
-                    risk_reasons.append("tight waste regulations increase compliance risk and process constraints")
-                if scale == "industrial" and steps > 5:
-                    risk_reasons.append("industrial scale-up with many steps multiplies operational risk")
-                risk_explanation = "; ".join(risk_reasons) if risk_reasons else "Risk is manageable given stable structure and controllable process parameters"
+                    waste_hazardous = (
+                        (method in ("chemical", "chem", "chemical synthesis") and raw_cost == "high")
+                        or (steps and int(steps) >= 4 and method in ("chemical", "chem"))
+                        or properties.get("base_toxicity") == "high"
+                        or properties.get("toxicity") == "high"
+                        or method in ("extraction", "extract", "extraction-based")
+                    )
+                    if waste_hazardous:
+                        risk_reasons.append("strikte Abfallregulierung kombiniert mit gefährlichen Reagenzien/Lösungsmitteln erhöht Compliance-Risiko")
+                    # If waste rules apply but no hazard present (e.g. Aspirin
+                    # with water + acetic anhydride), it does not bump risk and
+                    # therefore should not appear as a risk reason.
+
+                # --- Method-specific drivers ---
+                if method in ("biotechnological", "biotech", "biotechnological synthesis"):
+                    risk_reasons.append("biotechnologische Produktion benötigt aseptische/biosichere Operationen — Kontaminationsrisiko bleibt")
+
+                # --- Type-specific drivers (matches the type-based riskScore bumps) ---
+                if molecule_type == "protein":
+                    risk_reasons.append("Proteinprozesse haben höhere Sensitivität (Faltung, Glykosylierung, Aggregation) als kleine Moleküle")
+                elif molecule_type == "peptide":
+                    # only when ≥2 weights point in this direction so we don't
+                    # over-flag stable simple peptides like glutathione tripeptide
+                    if steps and int(steps) >= 5:
+                        risk_reasons.append("Peptid-Prozesse mit vielen Schritten erhöhen Aggregations- und Reinheits-Risiko")
+
+                risk_explanation = "; ".join(risk_reasons) if risk_reasons else "Risiko ist beherrschbar — Struktur und Prozessparameter sind im typischen Bereich"
             except Exception:
                 efficiency_explanation = "Efficiency explanation not available"
                 cost_explanation = "Cost explanation not available"

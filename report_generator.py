@@ -434,23 +434,178 @@ def export_report_pdf(
     elems.append(Paragraph(L("pdf_executive_summary"), styles["Recommendation"]))
     elems.append(Spacer(1, 8))
 
-    def perf_icon(v: str) -> str:
+    # Color-coded severity indicator — replaces the previous emoji icons
+    # (🔴 ⚠️ 🟢) which ReportLab's default Helvetica font cannot render and
+    # would output as ■ squares. Pure text + color is more professional too.
+    def perf_color(v: str) -> str:
         key = str(v).lower()
+        # red — high severity / unfavourable
         if key in ("high", "very high", "hoch", "sehr hoch"):
-            return "🔴"
+            return "#C0392B"
+        # orange — medium severity
         if key in ("medium", "mittel"):
-            return "⚠️"
-        return "🟢"
+            return "#D68910"
+        # green — low severity / favourable
+        return "#1E8449"
+
+    def perf_value_markup(v: str) -> str:
+        """Return bold + coloured value markup for a severity word."""
+        color = perf_color(v)
+        return f'<font color="{color}"><b>{TV(str(v).upper())}</b></font>'
+
+    # ---- Numeric score mapping (label → X/10) ----
+    # Provides a concrete numerical anchor next to the qualitative bucket so
+    # pharma reviewers can compare metrics on a uniform scale. Asymmetric for
+    # efficiency (10 = best) vs. the other three (10 = worst), so all four
+    # read consistently as "10 = ungünstig"-style is wrong — we keep
+    # efficiency inverted because a high efficiency is GOOD.
+    def _score_for(label: str, metric: str) -> str:
+        key = str(label).lower()
+        # For Effizienz: higher label = higher score (good is high)
+        if metric == "efficiency":
+            return {
+                "low": "3", "niedrig": "3",
+                "medium": "6", "mittel": "6",
+                "high": "8", "hoch": "8",
+                "very high": "10", "sehr hoch": "10",
+            }.get(key, "—") + " / 10"
+        # For Cost/Risk/Toxicity: higher label = higher score (high is BAD)
+        return {
+            "low": "2", "niedrig": "2",
+            "medium": "5", "mittel": "5",
+            "high": "7", "hoch": "7",
+            "very high": "9", "sehr hoch": "9",
+        }.get(key, "—") + " / 10"
+
+    # ---- Brief reason helpers ----
+    # Each returns a 3-7 word German/English phrase explaining the rating.
+    # Pulls from input parameters + analysis data — same data the engine used.
+    # Correct path: blueprint.get('input_parameters'), not analysis.input_context
+    # (which is empty in current engine output).
+    ip_ctx = blueprint.get('input_parameters') or {}
+    mtype_ctx = (ip_ctx.get('molecule_type') or "").lower()
+    msub_ctx = (ip_ctx.get('molecule_subtype') or "").lower()
+    method_ctx = (ip_ctx.get('method') or "").lower()
+    steps_ctx = ip_ctx.get('number_of_steps')
+    raw_cost_ctx = (ip_ctx.get('raw_material_cost') or "").lower()
+    eur_kg = ip_ctx.get('raw_material_cost_eur_per_kg')
+    purity_pct = ip_ctx.get('desired_purity_percent')
+    props_ctx = analysis.get('properties') or {}
+    pur_diff = (props_ctx.get('purification_difficulty') or "").lower()
+    complexity_ctx = (props_ctx.get('complexity') or "").lower()
+    strict_waste_ctx = bool(ip_ctx.get('strict_waste_constraints'))
+    n_dis = int(ip_ctx.get('num_disulfides') or 0)
+    has_ptm_ctx = bool(ip_ctx.get('has_ptm'))
+
+    def _brief_eff(v: str) -> str:
+        key = str(v).lower()
+        if isinstance(steps_ctx, int) and steps_ctx >= 10:
+            return "lange Synthesekette" if lang == "de" else "long synthesis chain"
+        if key in ("low", "niedrig"):
+            return "ineffizienter Prozess-Pfad" if lang == "de" else "inefficient process path"
+        if key in ("medium", "mittel"):
+            return "moderate Komplexität / Schrittzahl" if lang == "de" else "moderate complexity / step count"
+        if msub_ctx == "antibody":
+            return "etablierte CHO-Plattform" if lang == "de" else "established CHO platform"
+        if mtype_ctx == "natural_product":
+            # Method-aware: chemical synthesis of natural products usually
+            # competes with extraction/biotech (see Caffeine plausibility note).
+            if method_ctx in ("biotechnological", "biotech"):
+                return "fermentative Naturstoff-Route" if lang == "de" else "fermentative natural-product route"
+            if method_ctx in ("chemical", "chem"):
+                return "Extraktion oder Bio-Route meist günstiger" if lang == "de" else "extraction or bio route usually preferable"
+            return "Naturstoff-Standardroute" if lang == "de" else "natural-product standard route"
+        return "Standardroute, robuste Prozessparameter" if lang == "de" else "standard route, robust parameters"
+
+    def _brief_cost(v: str) -> str:
+        if msub_ctx == "antibody":
+            return "Protein-A-Affinität + CHO-Zellkultur" if lang == "de" else "protein-A capture + CHO culture"
+        if isinstance(eur_kg, (int, float)) and float(eur_kg) >= 500:
+            return f"Rohstoffe ≈ {float(eur_kg):.0f} €/kg dominiert" if lang == "de" else f"raw material ≈ {float(eur_kg):.0f} €/kg dominates"
+        if mtype_ctx == "peptide" and method_ctx == "chemical" and isinstance(steps_ctx, int) and steps_ctx >= 15:
+            return f"SPPS-Synthese ({steps_ctx} Kupplungen)" if lang == "de" else f"SPPS synthesis ({steps_ctx} couplings)"
+        # Differentiate biotech vs. chemical peptides — Glutathione is biotech,
+        # so "Synthese" is misleading.
+        if mtype_ctx == "peptide" and method_ctx in ("biotechnological", "biotech"):
+            return "Peptid-Fermentation + Chromatographie-Aufarbeitung" if lang == "de" else "peptide fermentation + chromatography"
+        if mtype_ctx == "peptide":
+            return "Peptid-Synthese + HPLC-Aufarbeitung" if lang == "de" else "peptide synthesis + HPLC workup"
+        if mtype_ctx == "protein":
+            return "Fermentation + Chromatographie-Sequenz" if lang == "de" else "fermentation + chromatography sequence"
+        if mtype_ctx == "natural_product" and pur_diff == "very high":
+            return "komplexes Naturstoff-Gemisch" if lang == "de" else "complex natural-product mixture"
+        if isinstance(steps_ctx, int) and steps_ctx >= 4:
+            return f"Multistep-Synthese ({steps_ctx} Schritte)" if lang == "de" else f"multistep synthesis ({steps_ctx} steps)"
+        if raw_cost_ctx == "high":
+            return "teure Rohstoffe (high COGS)" if lang == "de" else "expensive raw materials (high COGS)"
+        if str(v).lower() in ("low", "niedrig"):
+            return "günstige Rohstoffe, einfache Aufarbeitung" if lang == "de" else "cheap raw materials, simple workup"
+        return "moderate Treiber, keine Einzeldominanz" if lang == "de" else "moderate drivers, no single dominator"
+
+    def _brief_risk(v: str) -> str:
+        if msub_ctx == "antibody":
+            return "Faltung, Glykosylierung, Sterilität" if lang == "de" else "folding, glycosylation, sterility"
+        if mtype_ctx == "protein" and (n_dis >= 3 or has_ptm_ctx):
+            return "komplexe Faltung + PTM-Kontrolle" if lang == "de" else "complex folding + PTM control"
+        if isinstance(steps_ctx, int) and steps_ctx >= 6:
+            return f"hohe Schrittzahl ({steps_ctx}) multipliziert Fehlerquellen" if lang == "de" else f"high step count ({steps_ctx}) compounds risk"
+        if method_ctx in ("biotechnological", "biotech"):
+            return "Kontaminations- und Sterilitäts-Anforderungen" if lang == "de" else "contamination / sterility requirements"
+        if isinstance(purity_pct, (int, float)) and float(purity_pct) >= 99.0:
+            return "sehr hohe Reinheitsziele (Out-of-Spec-Risiko)" if lang == "de" else "very high purity (out-of-spec risk)"
+        if strict_waste_ctx and method_ctx in ("chemical", "chem"):
+            return "strikte Abfallauflagen, halogenierte Solvents" if lang == "de" else "strict waste rules, halogenated solvents"
+        if str(v).lower() in ("low", "niedrig"):
+            return "beherrschbar, etablierte Parameter" if lang == "de" else "manageable, established parameters"
+        return "moderate Prozess-Sensitivität" if lang == "de" else "moderate process sensitivity"
+
+    def _brief_tox(v: str) -> str:
+        # Controlled-substance check restricted to ACTUAL BtMG/DEA-scheduled
+        # molecules. Earlier version flagged all alkaloids → wrongly flagged
+        # caffeine, atropine, quinine etc.
+        controlled = {
+            "morphine", "codeine", "heroin", "cocaine", "oxycodone",
+            "hydrocodone", "methadone", "buprenorphine", "fentanyl",
+            "amphetamine", "methamphetamine",
+        }
+        mname = str(ip_ctx.get('molecule_name') or '').strip().lower()
+        if mname in controlled:
+            return "regulatorische Klassifizierung (BtMG-relevant)" if lang == "de" else "regulatory classification (controlled-substance)"
+
+        if mtype_ctx == "protein":
+            return "Endotoxin-Kontrolle, Glykosylierungs-Konsistenz" if lang == "de" else "endotoxin control, glycosylation consistency"
+        if mtype_ctx == "peptide":
+            return "Endotoxin-Spezifikation, Reinheit der Sequenz" if lang == "de" else "endotoxin specification, sequence purity"
+        # Solvent containment only when the synthesis is non-trivial — for a
+        # 1-step esterification (Aspirin) the reagent profile is mild and
+        # "Solvent-Containment" reads alarmist.
+        if (method_ctx in ("chemical", "chem") and strict_waste_ctx
+                and isinstance(steps_ctx, int) and int(steps_ctx) >= 3):
+            return "Solvent-Containment + Reagenz-Handhabung" if lang == "de" else "solvent containment + reagent handling"
+        if method_ctx in ("chemical", "chem") and strict_waste_ctx:
+            return "Standard-API-Handhabung, GMP-Reagenzqualität" if lang == "de" else "standard API handling, GMP reagent grade"
+        if str(v).lower() in ("low", "niedrig"):
+            return "Standard-Handhabung, keine kritischen Reagenzien" if lang == "de" else "standard handling, no critical reagents"
+        return "moderate Containment-Anforderungen" if lang == "de" else "moderate containment requirements"
 
     eff = analysis.get('efficiency', 'n/a')
     cost_val = analysis.get('cost', 'n/a')
     risk_val = analysis.get('risk', 'n/a')
     tox = analysis.get('final_toxicity', analysis.get('toxicity', 'n/a'))
 
-    elems.append(Paragraph(f"<b>{L('pdf_efficiency')}:</b> {perf_icon(eff)} {TV(str(eff).upper())}", styles["Score"]))
-    elems.append(Paragraph(f"<b>{L('pdf_cost')}:</b> {perf_icon(cost_val)} {TV(str(cost_val).upper())}", normal))
-    elems.append(Paragraph(f"<b>{L('pdf_risk')}:</b> {perf_icon(risk_val)} {TV(str(risk_val).upper())}", normal))
-    elems.append(Paragraph(f"<b>{L('pdf_toxicity')}:</b> {perf_icon(tox)} {TV(str(tox).upper())}", normal))
+    # Render each metric as: <Label>: BEWERTUNG  (X / 10 — kurze Begründung)
+    # The score + reason go in muted grey so the colored rating stays the focal point.
+    _muted = "#6B7B8A"
+    def _line(label_key: str, val: str, score: str, reason: str) -> str:
+        return (
+            f"<b>{L(label_key)}:</b> {perf_value_markup(val)} "
+            f'<font color="{_muted}" size="9">({score} — {reason})</font>'
+        )
+
+    elems.append(Paragraph(_line("pdf_efficiency", eff, _score_for(eff, "efficiency"), _brief_eff(eff)), styles["Score"]))
+    elems.append(Paragraph(_line("pdf_cost", cost_val, _score_for(cost_val, "cost"), _brief_cost(cost_val)), normal))
+    elems.append(Paragraph(_line("pdf_risk", risk_val, _score_for(risk_val, "risk"), _brief_risk(risk_val)), normal))
+    elems.append(Paragraph(_line("pdf_toxicity", tox, _score_for(tox, "toxicity"), _brief_tox(tox)), normal))
     elems.append(Spacer(1, 12))
 
     try:
@@ -575,14 +730,25 @@ def export_report_pdf(
                     elems.append(Paragraph(L("structure_caption"), normal))
                     elems.append(Paragraph(f"<b>{L('structure_label_mw')}:</b> {rdk_p['molecular_weight']:.2f} g/mol", normal))
                     elems.append(Paragraph(f"<b>{L('structure_label_logp')}:</b> {rdk_p['logp']:.2f}", normal))
-                    elems.append(Paragraph(f"<b>{L('structure_label_tpsa')}:</b> {rdk_p['tpsa']:.2f} Å²", normal))
+                    # Use ReportLab <super> markup so "Å²" renders correctly
+                    # (the bare U+00B2 is not in Helvetica's WinAnsi range → ■).
+                    elems.append(Paragraph(f"<b>{L('structure_label_tpsa')}:</b> {rdk_p['tpsa']:.2f} Å<super>2</super>", normal))
                     elems.append(Paragraph(f"<b>{L('structure_label_arom_rings')}:</b> {rdk_p['num_aromatic_rings']}", normal))
                     elems.append(Paragraph(f"<b>{L('structure_label_hbd')}:</b> {rdk_p['num_h_donors']}  ·  <b>{L('structure_label_hba')}:</b> {rdk_p['num_h_acceptors']}", normal))
                     elems.append(Paragraph(f"<b>{L('structure_label_rotbonds')}:</b> {rdk_p['num_rotatable_bonds']}", normal))
+                    # Color-coded text marker for Lipinski pass/fail.
+                    # ✓ renders in Helvetica but ⚠ does not (→ ■), so we
+                    # use coloured bold text instead for consistency.
                     if rdk_p['lipinski_violations'] == 0:
-                        elems.append(Paragraph(f"✓ {L('structure_label_lipinski_pass')}", normal))
+                        elems.append(Paragraph(
+                            f'<font color="#1E8449"><b>OK</b></font> &nbsp;{L("structure_label_lipinski_pass")}',
+                            normal,
+                        ))
                     else:
-                        elems.append(Paragraph(f"⚠ {L('structure_label_lipinski_fail')} ({rdk_p['lipinski_violations']})", normal))
+                        elems.append(Paragraph(
+                            f'<font color="#C0392B"><b>!</b></font> &nbsp;{L("structure_label_lipinski_fail")} ({rdk_p["lipinski_violations"]})',
+                            normal,
+                        ))
                     # Embed the rendered structure image
                     try:
                         png = _rdk_render(smiles_for_pdf, width=350, height=250)

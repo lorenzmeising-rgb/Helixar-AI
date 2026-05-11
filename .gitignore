@@ -23,3 +23,6 @@ env/
 
 # Local-only modules (kept out of pitch-ready repo)
 sensitivity_analysis.py
+
+# Batch-test generated outputs
+test_outputs/

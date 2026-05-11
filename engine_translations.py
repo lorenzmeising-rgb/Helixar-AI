@@ -84,6 +84,15 @@ _PHRASE_RULES = [
      r"Anspruchsvolle Aufarbeitung (HPLC/Chromatographie oder Destillation) — erhöht Lösungsmittel-, Puffer- und Harzkosten und verlängert die Aufarbeitungszeit"),
     (r"^Difficult purification \(chromatography/HPLC\) increases solvent.*$",
      r"Anspruchsvolle Aufarbeitung (Chromatographie/HPLC) — erhöht Lösungsmittel-, Harz- und Personalkosten"),
+    # New short / structure-context variants emitted by the engine (caught by batch test):
+    (r"^Difficult purification increases chromatography/HPLC time and solvent consumption \(aromatic system, multiple polar groups\).*$",
+     r"Anspruchsvolle Aufarbeitung — verlängert Chromatographie/HPLC-Zeit und erhöht Lösungsmittelverbrauch (aromatisches System, mehrere polare Gruppen)"),
+    (r"^Difficult purification increases chromatography/HPLC time and solvent consumption \(hydrophobic chain, multiple polar groups\).*$",
+     r"Anspruchsvolle Aufarbeitung — verlängert Chromatographie/HPLC-Zeit und erhöht Lösungsmittelverbrauch (hydrophobe Kette, mehrere polare Gruppen)"),
+    (r"^Difficult purification increases chromatography/HPLC time and solvent consumption.*$",
+     r"Anspruchsvolle Aufarbeitung — verlängert Chromatographie/HPLC-Zeit und erhöht den Lösungsmittelverbrauch"),
+    (r"^Difficult purification expected due to: .*$",
+     r"Anspruchsvolle Aufarbeitung erwartet — strukturelle Gründe identifiziert"),
     (r"^Difficult downstream separations inferred from structure.*$",
      r"Strukturbasiert anspruchsvolle Aufarbeitung erwartet"),
     (r"^Challenging purification increases downstream cost.*$",
@@ -100,6 +109,29 @@ _PHRASE_RULES = [
      r"Antikörper-Aufarbeitung dominiert von Affinitäts-Capture und Multi-Step-Chromatographie; Resin-Wiederverwendung und CIP-Zyklen einplanen"),
     (r"^Antibody purification is highly complex.*$",
      r"Antikörper-Aufreinigung ist hochkomplex und teuer"),
+    # Antibody recovery (doi:... citations stay as-is, only the prefix is translated)
+    (r"^Antibody recovery and purification \(doi:([^\)]+)\).*$",
+     r"Antikörper-Gewinnung und -Aufreinigung (DOI: \1) — Standard-Sequenz: Protein-A → Low-pH-VI → IEX → AEX/VF → TFF"),
+    (r"^Antibody recovery and purification.*$",
+     r"Antikörper-Gewinnung und -Aufreinigung — Standard-Sequenz: Protein-A-Capture, Low-pH-Virusinaktivierung, IEX-Polishing, TFF-Konzentrierung"),
+
+    # Peptide downstream guidance
+    (r"^Peptide downstreams often require preparative HPLC \(reverse-phase\) and orthogonal polishing steps;\s*plan for solvent recycling.*$",
+     r"Peptid-Aufarbeitung erfordert üblicherweise präparative HPLC (Reversed-Phase) und orthogonale Polishing-Schritte; Lösungsmittel-Recycling einplanen"),
+    (r"^Peptide downstreams require preparative HPLC.*$",
+     r"Peptid-Aufarbeitung erfordert präparative HPLC und orthogonale Polishing-Schritte"),
+
+    # Natural product downstream guidance
+    (r"^Natural products often require selective extraction, fractionation and targeted chromatographic separation due to complex mixtures.*$",
+     r"Naturstoffe erfordern selektive Extraktion, Fraktionierung und gezielte chromatographische Trennung aufgrund komplexer Gemische"),
+    (r"^Natural products require selective extraction.*$",
+     r"Naturstoffe erfordern selektive Extraktion und chromatographische Trennung"),
+
+    # Protein downstream guidance (proactive — likely to surface for enzymes/non-antibodies)
+    (r"^Protein downstream typically uses ion-exchange, hydrophobic-interaction and size-exclusion chromatography.*$",
+     r"Protein-Aufarbeitung nutzt typischerweise Ionenaustausch-, hydrophobe Interaktions- und Größenausschluss-Chromatographie"),
+    (r"^Protein downstream requires multi-step chromatography.*$",
+     r"Protein-Aufarbeitung erfordert mehrstufige Chromatographie und Polishing-Schritte"),
 
     (r"^Complex folding increases process development.*$",
      r"Komplexe Faltung erhöht Prozessentwicklungs- und Refolding-Kosten"),
@@ -151,6 +183,11 @@ _PHRASE_RULES = [
     # ---- Step / process complexity cost drivers ----
     (r"^Multiple synthesis steps \((\d+)\) increase reagent, labour and unit-operation costs.*$",
      r"Mehrstufige Synthese (\1 Schritte) erhöht Reagenzien-, Personal- und Betriebskosten"),
+    # Engine emits both "operational complexity" and "operational costs (reagents, labour, unit ops)":
+    (r"^Multiple synthesis steps \((\d+)\) increase operational costs \(reagents, labour, unit ops\).*$",
+     r"Mehrstufige Synthese (\1 Schritte) erhöht die Betriebskosten (Reagenzien, Personal, Unit-Operations)"),
+    (r"^Multiple synthesis steps increase operational complexity.*$",
+     r"Mehrstufige Synthese erhöht die operative Komplexität"),
     (r"^Many synthesis steps drive up reagent and labour costs.*$",
      r"Viele Syntheseschritte treiben Reagenzien- und Personalkosten in die Höhe"),
     (r"^Each additional step reduces overall yield.*$",
