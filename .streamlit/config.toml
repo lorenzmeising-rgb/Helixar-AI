@@ -1,0 +1,16 @@
+[theme]
+# Dark biotech theme — derived from the Helixar logo
+# Primary (turquoise accent for active state, buttons, highlights)
+primaryColor = "#3DB8C5"
+# Deep navy main background
+backgroundColor = "#0D1B2A"
+# Slightly lighter navy for cards / sidebar
+secondaryBackgroundColor = "#1B2B40"
+# Off-white text for high contrast on dark backgrounds
+textColor = "#E8EEF4"
+font = "sans serif"
+base = "dark"
+
+[server]
+enableCORS = false
+enableXsrfProtection = false

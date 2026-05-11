@@ -15,7 +15,15 @@ If `path` is a string, the exported file path (str) is returned like before. If
 """
 
 
-def export_report_pdf(report_text: str, blueprint: Optional[Dict[str, Any]], path: Optional[str] = None, title: str = "Helixar Produktionsbericht", author: Optional[str] = None):
+def export_report_pdf(
+    report_text: str,
+    blueprint: Optional[Dict[str, Any]],
+    path: Optional[str] = None,
+    title: str = "Helixar Produktionsbericht",
+    author: Optional[str] = None,
+    extras: Optional[Dict[str, Any]] = None,
+    lang: Optional[str] = None,
+):
     try:
         from report_generator import export_report_pdf as rg_export
     except Exception as e:
@@ -27,9 +35,9 @@ def export_report_pdf(report_text: str, blueprint: Optional[Dict[str, Any]], pat
     # If caller requests in-memory PDF (path is None), use a BytesIO buffer.
     if path is None:
         buf = io.BytesIO()
-        rg_export(blueprint, buf, title=title, author=author)
+        rg_export(blueprint, buf, title=title, author=author, extras=extras, lang=lang)
         buf.seek(0)
         return buf.read()
 
     # Otherwise, write to the provided filesystem path and return that path.
-    return rg_export(blueprint, path, title=title, author=author)
+    return rg_export(blueprint, path, title=title, author=author, extras=extras, lang=lang)

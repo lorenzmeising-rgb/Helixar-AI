@@ -640,13 +640,38 @@ class DecisionEngine:
                 except Exception:
                     smiles_candidate = None
 
-            # Extract SMILES-derived properties and merge (SMILES-derived override defaults)
+            # Extract SMILES-derived properties.
+            # Strategy: try RDKit first (real cheminformatics — MW, logP, TPSA, ...).
+            # If RDKit is unavailable or the SMILES is invalid, fall back to the
+            # legacy string-heuristic so the engine still works.
             struct_props = {}
+            rdkit_numeric = None
             try:
-                struct_props = self._extract_smiles_properties(smiles_candidate) or {}
-                # merge without losing previously-provided keys (SMILES-derived wins)
+                from rdkit_properties import (
+                    compute_properties as _rdkit_compute,
+                    derive_engine_properties as _rdkit_derive,
+                    RDKIT_AVAILABLE as _RDKIT_AVAILABLE,
+                )
+            except Exception:
+                _rdkit_compute = None
+                _rdkit_derive = None
+                _RDKIT_AVAILABLE = False
+
+            try:
+                if _RDKIT_AVAILABLE and _rdkit_compute and smiles_candidate:
+                    rdkit_numeric = _rdkit_compute(smiles_candidate)
+                    if rdkit_numeric:
+                        struct_props = _rdkit_derive(rdkit_numeric) or {}
+                # Fallback to legacy string-heuristic when RDKit gave us nothing
+                if not struct_props:
+                    struct_props = self._extract_smiles_properties(smiles_candidate) or {}
+                # Merge without losing previously-provided keys (SMILES-derived wins)
                 merged = dict(properties or {})
                 merged.update(struct_props or {})
+                # Carry the raw numeric RDKit values too — downstream consumers
+                # (report_generator, app.py) can show them when available.
+                if rdkit_numeric:
+                    merged["rdkit_numeric"] = rdkit_numeric
                 properties = merged
             except Exception:
                 # keep original properties on failure
@@ -1514,6 +1539,11 @@ class DecisionEngine:
                 risk = "high"
 
             # STEP 5: Scale impact on risk/cost
+            # Context-aware: industrial scale does NOT automatically mean high
+            # cost — for established simple processes (Aspirin, Paracetamol,
+            # commodity small molecules) the unit cost stays low even at scale.
+            # We only bump cost to "high" when at least one cost driver is also
+            # present (complex molecule, expensive starting materials, many steps).
             try:
                 if scale == "lab":
                     # lab scale tends to be lower operational risk: reduce one level safely
@@ -1525,10 +1555,21 @@ class DecisionEngine:
                 elif scale == "pilot":
                     risk = bump(risk, 1)
                 elif scale == "industrial":
-                    # industrial increases both cost and risk
                     if "Scaling introduces operational and mixing challenges" not in issues:
                         issues.append("Scaling introduces operational and mixing challenges")
-                    cost = "high"
+                    # Conditional cost bump — only when there is a real cost driver
+                    _scale_cost_drivers = (
+                        molecule_type in ("protein", "peptide")
+                        or properties.get("complexity") == "high"
+                        or properties.get("purification_difficulty") in ("high", "very high")
+                        or str(p.get("raw_material_cost") or "").lower() in ("high", "very high")
+                        or (isinstance(p.get("raw_material_cost_eur_per_kg"), (int, float))
+                            and float(p.get("raw_material_cost_eur_per_kg")) > 500.0)
+                        or steps > 3
+                    )
+                    if _scale_cost_drivers:
+                        cost = "high"
+                    # else: keep current cost level (likely low/medium for simple processes)
                     risk = bump(risk, 2)
             except Exception:
                 pass
@@ -2132,7 +2173,22 @@ class DecisionEngine:
                                 return t
                     return None
 
-                # Merge related messages into one strong statement per topic
+                # Merge related messages into one strong statement per topic.
+                # Context-aware: some consolidations are suppressed when the
+                # actual input doesn't justify the strong wording.
+                # Examples:
+                #   - "High synthesis step count..." should NOT fire at 1 step
+                #   - "Difficult purification (HPLC...)" should NOT fire when
+                #     the molecule crystallizes well and purity demand is moderate
+                #   - "Expensive starting materials..." should NOT fire when
+                #     raw_material_cost is explicitly low
+                _ctx_steps = int(p.get("number_of_steps") or 0)
+                _ctx_purity = (p.get("desired_purity") or "").lower()
+                _ctx_rmcost = (p.get("raw_material_cost") or "").lower()
+                _ctx_rmcost_eur = p.get("raw_material_cost_eur_per_kg")
+                _ctx_crystal = bool(properties.get("crystallization_potential"))
+                _ctx_arom = int(properties.get("aromatic_rings") or 0)
+
                 def _merge_by_topic(lst: List[str]) -> List[str]:
                     grouped: Dict[str, List[str]] = {}
                     others: List[str] = []
@@ -2144,13 +2200,33 @@ class DecisionEngine:
                             others.append(s)
                     merged: List[str] = []
                     for t, items in grouped.items():
-                        # create a consolidated sentence depending on topic
+                        # Context-sensitive consolidation
                         if t == 'steps':
-                            merged.append('High synthesis step count increases operational complexity, extends cycle time, and limits scalability')
+                            # Only flag "high step count" when there really are many steps
+                            if _ctx_steps >= 4:
+                                merged.append('High synthesis step count increases operational complexity, extends cycle time, and limits scalability')
+                            else:
+                                # Keep specific original items (will be translated downstream)
+                                merged.extend(items)
                         elif t == 'purification':
-                            merged.append('Difficult purification (HPLC/chromatography or distillation) increases solvent, buffer and resin costs and extends downstream cycle time')
+                            # Suppress "Difficult purification HPLC" for crystalline
+                            # small molecules at moderate purity (Aspirin, Paracetamol etc.)
+                            if _ctx_crystal and _ctx_purity not in (">99%", "very high"):
+                                # Replace with a softer, accurate statement
+                                merged.append('Aromatic / crystallizable structure — crystallization-based workup typically sufficient, HPLC not strictly required')
+                            else:
+                                merged.append('Difficult purification (HPLC/chromatography or distillation) increases solvent, buffer and resin costs and extends downstream cycle time')
                         elif t == 'raw_materials':
-                            merged.append('Expensive or scarce starting materials increase COGS and procurement risk')
+                            # Only flag if starting materials are actually expensive
+                            is_expensive = (
+                                _ctx_rmcost in ("high", "very high")
+                                or (isinstance(_ctx_rmcost_eur, (int, float)) and float(_ctx_rmcost_eur) > 500.0)
+                            )
+                            if is_expensive:
+                                merged.append('Expensive or scarce starting materials increase COGS and procurement risk')
+                            else:
+                                # Otherwise drop the topic entirely — no false alarm
+                                pass
                         elif t == 'aggregation':
                             merged.append('High aggregation risk reduces yield and increases polishing and formulation costs')
                         elif t == 'stability':

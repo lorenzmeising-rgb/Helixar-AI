@@ -185,18 +185,17 @@ def generate_production_blueprint(
         pass
 
     # Include the original input context (constraints) if present on the selected strategy.
+    # Copy the entire context so downstream consumers (report_generator, PDF export)
+    # have access to all input fields — including the numeric ones (desired_purity_percent,
+    # scale_kg_per_year, raw_material_cost_eur_per_kg) and the lab capability flags.
     try:
         input_ctx = selected_strategy.get("input_context") if isinstance(selected_strategy, dict) else None
-        if input_ctx:
-            blueprint["input_parameters"] = {
-                "target_molecule": input_ctx.get("target_molecule"),
-                "application": input_ctx.get("application"),
-                "scale": input_ctx.get("scale"),
-                "purity": input_ctx.get("purity"),
-                "sustainability": input_ctx.get("sustainability"),
-                "preferred_method": input_ctx.get("preferred_method"),
-                "infrastructure": input_ctx.get("infrastructure"),
-            }
+        if input_ctx and isinstance(input_ctx, dict):
+            blueprint["input_parameters"] = dict(input_ctx)
+            # Convenience alias used by some legacy report code.
+            blueprint["input_parameters"].setdefault(
+                "target_molecule", input_ctx.get("molecule_name")
+            )
     except Exception:
         # Don't fail blueprint creation for missing/invalid input_context
         pass
