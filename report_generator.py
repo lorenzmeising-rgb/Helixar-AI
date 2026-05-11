@@ -606,6 +606,34 @@ def export_report_pdf(
     elems.append(Paragraph(_line("pdf_cost", cost_val, _score_for(cost_val, "cost"), _brief_cost(cost_val)), normal))
     elems.append(Paragraph(_line("pdf_risk", risk_val, _score_for(risk_val, "risk"), _brief_risk(risk_val)), normal))
     elems.append(Paragraph(_line("pdf_toxicity", tox, _score_for(tox, "toxicity"), _brief_tox(tox)), normal))
+
+    # ---- COGS range estimate (€/kg) — directly below cost qualifier ----
+    # Pharma reviewers expect a concrete economic anchor next to the
+    # qualitative cost rating. We surface the range here in the exec
+    # summary, and a fuller breakdown table further down the report.
+    try:
+        from cogs_estimator import estimate_cogs as _est_cogs, format_cogs_range as _fmt_cogs
+        cogs_result = _est_cogs(ip_ctx) or {}
+        cogs_range = _fmt_cogs(cogs_result, lang=lang)
+    except Exception:
+        cogs_result = None
+        cogs_range = None
+
+    if cogs_range:
+        conf_word = {
+            "high": ("hohe Confidence", "high confidence"),
+            "medium": ("mittlere Confidence", "medium confidence"),
+            "low": ("niedrige Confidence", "low confidence"),
+        }.get(str((cogs_result or {}).get("confidence", "low")), ("low conf", "low conf"))
+        conf_text = conf_word[0] if lang == "de" else conf_word[1]
+        anchor_text = (cogs_result or {}).get("anchor_de" if lang == "de" else "anchor_en") or ""
+        cogs_label = ("Geschätzte COGS" if lang == "de" else "Estimated COGS")
+        elems.append(Paragraph(
+            f'<b>{cogs_label}:</b> <font color="#1E3A5F"><b>{cogs_range}</b></font> '
+            f'<font color="{_muted}" size="9">({conf_text} — {anchor_text})</font>',
+            normal,
+        ))
+
     elems.append(Spacer(1, 12))
 
     try:
@@ -712,6 +740,77 @@ def export_report_pdf(
                 elems.append(Paragraph(f"<b>{L('metric_ptm')}:</b> {ptm_text}", normal))
         elems.append(Spacer(1, 6))
 
+    # ---- Process-flow block diagram + per-step legend ----
+    # Two-row block diagram (Upstream → Downstream) gives reviewers a
+    # one-glance view of the production chain. The legend immediately
+    # below explains what each block means for THIS molecule class —
+    # otherwise labels like "Stamm / Inokulum" stay opaque to non-experts.
+    try:
+        from process_flow import (
+            build_process_flow_drawing as _build_flow,
+            build_process_flow_legend as _build_flow_legend,
+        )
+        _concrete = extras.get("concrete_recs") if isinstance(extras, dict) else None
+        _flow_drawing = _build_flow(input_params, _concrete, lang=lang)
+        _flow_legend = _build_flow_legend(input_params, _concrete, lang=lang)
+    except Exception:
+        _flow_drawing = None
+        _flow_legend = []
+
+    if _flow_drawing is not None:
+        flow_header = "Prozess-Flow" if lang == "de" else "Process flow"
+        elems.append(Paragraph(flow_header, styles["Section"]))
+        elems.append(_flow_drawing)
+        flow_caption = ("Schematisch — Block-Reihenfolge spiegelt die "
+                        "typische Sequenz für diese Molekül-Klasse wider. "
+                        "Erklärung der einzelnen Schritte folgt unten."
+                        if lang == "de" else
+                        "Schematic — block order reflects the typical "
+                        "sequence for this molecule class. Per-step "
+                        "explanations follow below.")
+        elems.append(Paragraph(f"<font size='8' color='#6B7B8A'>{flow_caption}</font>", normal))
+        elems.append(Spacer(1, 8))
+
+        # Per-step legend — addresses the "what is Stamm/Inokulum?" gap
+        if _flow_legend:
+            upstream_items = [x for x in _flow_legend if x.get("section") == "upstream"]
+            downstream_items = [x for x in _flow_legend if x.get("section") == "downstream"]
+
+            up_header_label = ("Upstream — Schritt-Erklärungen"
+                               if lang == "de" else "Upstream — step explanations")
+            dn_header_label = ("Downstream — Schritt-Erklärungen"
+                               if lang == "de" else "Downstream — step explanations")
+
+            if upstream_items:
+                elems.append(Paragraph(
+                    f"<font size='9' color='{'#1E3A5F'}'><b>{up_header_label}</b></font>",
+                    normal,
+                ))
+                for i, item in enumerate(upstream_items, 1):
+                    lbl = item.get("label", "")
+                    expl = item.get("explanation", "")
+                    elems.append(Paragraph(
+                        f"<font size='9'><b>{i}. {lbl}</b> — {expl}</font>",
+                        normal,
+                    ))
+                elems.append(Spacer(1, 4))
+
+            if downstream_items:
+                elems.append(Paragraph(
+                    f"<font size='9' color='{'#3DB8C5'}'><b>{dn_header_label}</b></font>",
+                    normal,
+                ))
+                for i, item in enumerate(downstream_items, 1):
+                    lbl = item.get("label", "")
+                    expl = item.get("explanation", "")
+                    elems.append(Paragraph(
+                        f"<font size='9'><b>{i}. {lbl}</b> — {expl}</font>",
+                        normal,
+                    ))
+                elems.append(Spacer(1, 6))
+
+        elems.append(Spacer(1, 10))
+
     # Structure analysis (RDKit) — only when a SMILES is available and RDKit
     # successfully parses it. Falls back silently when not.
     smiles_for_pdf = input_params.get("smiles")
@@ -800,6 +899,95 @@ def export_report_pdf(
     elems.append(Paragraph(L("pdf_cost_impact"), styles["Section"]))
     cost_level = (analysis.get('costLevel') or analysis.get('cost') or 'n/a')
     elems.append(Paragraph(f"{L('pdf_cost_level')}: <b>{TV(str(cost_level).upper())}</b>", normal))
+
+    # ---- COGS model: concrete €/kg range + breakdown table ----
+    # Inserted between qualitative cost level and cost drivers so reviewers
+    # can move from "wieviel kostet das eigentlich?" (range) to "warum?" (drivers)
+    # in one continuous reading flow.
+    try:
+        from cogs_estimator import estimate_cogs as _est, format_cogs_range as _fmt
+        _cogs = _est(input_params) or {}
+        _rng = _fmt(_cogs, lang=lang)
+    except Exception:
+        _cogs = {}
+        _rng = None
+
+    if _rng:
+        # Section header
+        elems.append(Spacer(1, 6))
+        cogs_header = "Kostenmodell (COGS-Schätzung)" if lang == "de" else "Cost model (COGS estimate)"
+        elems.append(Paragraph(f"<b>{cogs_header}</b>", normal))
+
+        # Range line — highlight in brand blue
+        range_label = "Geschätzte Range" if lang == "de" else "Estimated range"
+        elems.append(Paragraph(
+            f"{range_label}: <font color='#1E3A5F'><b>{_rng}</b></font>",
+            normal,
+        ))
+
+        # Confidence + anchor
+        conf = _cogs.get("confidence", "low")
+        conf_de = {"high": "Hoch", "medium": "Mittel", "low": "Niedrig"}.get(conf, conf)
+        conf_en = {"high": "High", "medium": "Medium", "low": "Low"}.get(conf, conf)
+        conf_text = conf_de if lang == "de" else conf_en
+        anchor_text = _cogs.get("anchor_de" if lang == "de" else "anchor_en") or ""
+        conf_lbl = "Confidence" if lang == "en" else "Confidence"
+        elems.append(Paragraph(
+            f"<font size='9'>{conf_lbl}: <b>{conf_text}</b> · {anchor_text}</font>",
+            normal,
+        ))
+
+        # Breakdown table — typical share of total COGS
+        breakdown = _cogs.get("breakdown") or {}
+        if breakdown:
+            from reportlab.platypus import Table, TableStyle
+            from reportlab.lib import colors
+            label_map_de = {
+                "rm": "Rohstoffe",
+                "dsp": "Aufarbeitung (DSP)",
+                "opex": "Betriebskosten (OpEx)",
+                "capex": "Anlagen-Amortisation (CapEx)",
+            }
+            label_map_en = {
+                "rm": "Raw materials",
+                "dsp": "Downstream (DSP)",
+                "opex": "Operating expenses",
+                "capex": "Asset amortisation (CapEx)",
+            }
+            labels = label_map_de if lang == "de" else label_map_en
+            rows = [[
+                "Posten" if lang == "de" else "Item",
+                "Anteil" if lang == "de" else "Share",
+            ]]
+            for k in ("rm", "dsp", "opex", "capex"):
+                if k in breakdown:
+                    rows.append([labels[k], f"{int(round(float(breakdown[k]) * 100))} %"])
+            tbl = Table(rows, colWidths=[100 * mm, 25 * mm])
+            tbl.setStyle(TableStyle([
+                ("FONT", (0, 0), (-1, 0), "Helvetica-Bold", 9),
+                ("FONT", (0, 1), (-1, -1), "Helvetica", 9),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#1E3A5F")),
+                ("LINEBELOW", (0, 0), (-1, 0), 0.5, colors.HexColor("#3DB8C5")),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F4F7FA")]),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ]))
+            elems.append(Spacer(1, 4))
+            elems.append(tbl)
+
+        # Drivers list (user-facing, in target language)
+        drivers_list = _cogs.get("drivers_de" if lang == "de" else "drivers_en") or []
+        if drivers_list:
+            drv_header = "Modifikatoren der Schätzung" if lang == "de" else "Estimate modifiers"
+            elems.append(Spacer(1, 4))
+            elems.append(Paragraph(f"<font size='9'><b>{drv_header}:</b></font>", normal))
+            for dr in drivers_list[:6]:
+                elems.append(Paragraph(f"<font size='9'>• {dr}</font>", normal))
+
+        elems.append(Spacer(1, 8))
+
     drivers = analysis.get('costDrivers') or []
     if drivers:
         elems.append(Paragraph(L("pdf_main_cost_drivers"), normal))
