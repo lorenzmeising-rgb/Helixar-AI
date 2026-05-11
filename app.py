@@ -1777,21 +1777,123 @@ def show_demos_page():
                 st.rerun()
 
 
+def _looks_like_email(s: str) -> bool:
+    """Very lightweight email-shape check (not full RFC 5322).
+
+    Empty string is considered valid because the email field is optional.
+    """
+    if not s or not str(s).strip():
+        return True
+    s = str(s).strip()
+    if " " in s:
+        return False
+    if s.count("@") != 1:
+        return False
+    local, _, domain = s.partition("@")
+    if not local or not domain or "." not in domain:
+        return False
+    return True
+
+
 def show_feedback_page():
-    """A lightweight feedback page, separate from reports/blueprints."""
+    """Feedback page with structured form that emails Lorenz via Formsubmit.co."""
+    from feedback_submission import submit_feedback as _submit_feedback
+
     st.title(t("feedback_page_title"))
-    user_feedback = st.text_area(
-        t("feedback_input_label"),
-        value="",
-        placeholder=t("feedback_input_placeholder"),
-    )
-    if st.button(t("feedback_submit_button")):
-        # For now, do not connect to blueprints or reports; simply acknowledge receipt.
-        if not user_feedback or str(user_feedback).strip() == "":
-            st.warning(t("feedback_warn_empty"))
+    st.markdown(t("feedback_page_intro"))
+    st.caption(t("feedback_optional_hint"))
+
+    # Category options — labels are localised, the value sent to email is the
+    # short English key so Lorenz sees a stable category name in his inbox.
+    category_options = [
+        ("bug", t("feedback_category_bug")),
+        ("feature", t("feedback_category_feature")),
+        ("content", t("feedback_category_content")),
+        ("ux", t("feedback_category_ux")),
+        ("other", t("feedback_category_other")),
+    ]
+    category_keys = [k for k, _ in category_options]
+    category_label_for = {k: lbl for k, lbl in category_options}
+
+    with st.form("feedback_form", clear_on_submit=False):
+        col1, col2 = st.columns(2)
+        with col1:
+            fb_name = st.text_input(
+                t("feedback_label_name"),
+                value="",
+                placeholder=t("feedback_placeholder_name"),
+            )
+        with col2:
+            fb_company = st.text_input(
+                t("feedback_label_company"),
+                value="",
+                placeholder=t("feedback_placeholder_company"),
+            )
+
+        fb_email = st.text_input(
+            t("feedback_label_email"),
+            value="",
+            placeholder=t("feedback_placeholder_email"),
+        )
+
+        fb_category_key = st.selectbox(
+            t("feedback_label_category"),
+            options=category_keys,
+            format_func=lambda k: category_label_for[k],
+            index=0,
+        )
+
+        fb_text = st.text_area(
+            t("feedback_label_text"),
+            value="",
+            placeholder=t("feedback_placeholder_text"),
+            height=180,
+        )
+
+        submitted = st.form_submit_button(t("feedback_submit_button"))
+
+    if submitted:
+        # 1) Required-text check
+        if not fb_text or not str(fb_text).strip():
+            st.warning(t("feedback_warn_empty_text"))
+            return
+
+        # 2) Lightweight email-shape check (only if user filled it)
+        if fb_email and not _looks_like_email(fb_email):
+            st.warning(t("feedback_email_invalid"))
+            return
+
+        # 3) Send via Formsubmit. We keep the category key (stable) plus the
+        #    localised label in parentheses so Lorenz sees both.
+        category_display = f"{fb_category_key} ({category_label_for[fb_category_key]})"
+        active_lang = st.session_state.get("language", DEFAULT_LANGUAGE)
+
+        with st.spinner(t("feedback_sending")):
+            result = _submit_feedback(
+                feedback_text=fb_text,
+                category=category_display,
+                name=fb_name,
+                company=fb_company,
+                user_email=fb_email,
+                app_language=active_lang,
+            )
+
+        if result.get("ok"):
+            st.success(t("feedback_submit_success"))
         else:
-            st.success(t("feedback_thanks"))
-            # Optionally, store or forward feedback in a future iteration.
+            err_code = result.get("message", "")
+            if err_code == "needs_activation":
+                # Friendly path: the mail service is set up but waiting for the
+                # one-time activation click in Lorenz's inbox.
+                st.warning(t("feedback_needs_activation"))
+            elif err_code in ("timeout", "connection_error"):
+                st.error(t("feedback_submit_error_network"))
+            else:
+                st.error(t("feedback_submit_error_generic"))
+            # Show a tiny diagnostic line so we can debug if needed (not alarming)
+            st.caption(
+                f"(Status: {result.get('http_status') or '—'} · {err_code})"
+            )
 
 
 # Sidebar header: logo + wordmark, then icon-driven navigation.

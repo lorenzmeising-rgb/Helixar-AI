@@ -4,3 +4,4 @@ numpy
 reportlab
 rdkit
 Pillow
+requests

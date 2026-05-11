@@ -763,6 +763,69 @@ TRANSLATIONS = {
         "de": "Danke — Ihr Feedback wurde empfangen.",
         "en": "Thanks — your feedback was received.",
     },
+    "feedback_page_intro": {
+        "de": ("Hilf uns, Helixar AI besser zu machen. Dein Feedback geht direkt "
+               "an das Helixar-Team. Pflichtfelder sind mit * markiert; alles "
+               "andere ist optional."),
+        "en": ("Help us make Helixar AI better. Your feedback goes directly to "
+               "the Helixar team. Required fields are marked with *; everything "
+               "else is optional."),
+    },
+    "feedback_label_name": {"de": "Name", "en": "Name"},
+    "feedback_label_company": {"de": "Firma / Organisation", "en": "Company / organisation"},
+    "feedback_label_email": {
+        "de": "Deine E-Mail (für Rückfragen)",
+        "en": "Your email (for follow-up)",
+    },
+    "feedback_label_category": {"de": "Kategorie *", "en": "Category *"},
+    "feedback_label_text": {"de": "Dein Feedback *", "en": "Your feedback *"},
+    "feedback_placeholder_name": {"de": "z. B. Anna Müller", "en": "e.g. Anna Miller"},
+    "feedback_placeholder_company": {"de": "z. B. BioPharma GmbH", "en": "e.g. BioPharma Inc."},
+    "feedback_placeholder_email": {"de": "name@firma.com", "en": "name@company.com"},
+    "feedback_placeholder_text": {
+        "de": "Beschreibe so konkret wie möglich — z. B. welches Molekül, welcher Schritt, was war erwartet vs. tatsächlich.",
+        "en": "Be as specific as possible — e.g. which molecule, which step, expected vs. actual behaviour.",
+    },
+    "feedback_category_bug": {"de": "🐛 Bug / Fehler", "en": "🐛 Bug / error"},
+    "feedback_category_feature": {"de": "✨ Feature-Wunsch", "en": "✨ Feature request"},
+    "feedback_category_content": {"de": "🧬 Inhaltlich / Fachlich", "en": "🧬 Domain / scientific content"},
+    "feedback_category_ux": {"de": "🎨 UX / Bedienung", "en": "🎨 UX / usability"},
+    "feedback_category_other": {"de": "💬 Sonstiges", "en": "💬 Other"},
+    "feedback_submit_success": {
+        "de": "Danke! Dein Feedback ist beim Helixar-Team angekommen.",
+        "en": "Thanks! Your feedback was delivered to the Helixar team.",
+    },
+    "feedback_submit_error_generic": {
+        "de": "Das Senden ist fehlgeschlagen. Bitte versuche es in ein paar Minuten nochmal — oder schreib direkt an lorenzmeising@icloud.com.",
+        "en": "Submission failed. Please try again in a few minutes — or write directly to lorenzmeising@icloud.com.",
+    },
+    "feedback_submit_error_network": {
+        "de": "Keine Verbindung zum Mail-Service. Bitte prüfe deine Internetverbindung.",
+        "en": "No connection to the mail service. Please check your internet connection.",
+    },
+    "feedback_warn_empty_text": {
+        "de": "Bitte gib einen Feedback-Text ein, bevor du absendest.",
+        "en": "Please enter feedback text before submitting.",
+    },
+    "feedback_email_invalid": {
+        "de": "Die E-Mail-Adresse sieht nicht gültig aus. Du kannst das Feld auch leer lassen.",
+        "en": "The email address does not look valid. You can also leave this field empty.",
+    },
+    "feedback_optional_hint": {
+        "de": "Name, Firma und Mail sind optional — anonymes Feedback ist auch willkommen.",
+        "en": "Name, company and email are optional — anonymous feedback is welcome too.",
+    },
+    "feedback_sending": {"de": "Wird gesendet …", "en": "Sending …"},
+    "feedback_needs_activation": {
+        "de": ("Einmaliger Schritt: Der Mail-Service wartet auf eine Aktivierung. "
+               "Bitte prüfe das Postfach lorenzmeising@icloud.com, klicke den "
+               "'Activate Form'-Link in der Mail von Formsubmit, und schicke "
+               "danach diese Nachricht nochmal ab — dann kommt sie an."),
+        "en": ("One-time step: the mail service is waiting for activation. "
+               "Please check the lorenzmeising@icloud.com inbox, click the "
+               "'Activate Form' link in the email from Formsubmit, and then "
+               "resubmit this message — it will arrive then."),
+    },
     "candidates_disabled": {
         "de": "Die Kandidatenauswahl wurde deaktiviert. Bitte nutzen Sie die Startseite, um eine neue Anfrage zu stellen.",
         "en": "Candidate selection has been disabled. Please use the home page to start a new request.",
