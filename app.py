@@ -342,6 +342,41 @@ def show_start_page():
     if "proc_autofill_msg" not in st.session_state:
         st.session_state.proc_autofill_msg = ""
 
+    # Feedback-Runde-3: realistische Industrie-Defaults pro (type, subtype).
+    # Werte angelehnt an die Anchors in cogs_estimator.py + publizierte
+    # Pharma-/Bulk-Benchmarks. Form: (purity_%, scale_kg_per_year,
+    # raw_cost_eur_per_kg, num_steps).
+    TYPE_DEFAULTS = {
+        ("small_molecule", "non_volatile"): (99.0, 1000.0, 20.0, 3),     # API-Bulk (Aspirin-Klasse)
+        ("small_molecule", "volatile"):     (99.5, 50000.0, 1.0, 2),     # Ethanol-Commodity
+        ("natural_product", "alkaloid"):    (99.0, 100.0, 100.0, 4),     # Morphine/Codeine-Klasse
+        ("natural_product", "terpene"):     (95.0, 100.0, 80.0, 4),      # Carotinoide
+        ("peptide", "linear"):              (99.5, 10.0, 1000.0, 5),     # GLP-1-Analoga, Insulin
+        ("peptide", "cyclic"):              (99.5, 5.0, 2000.0, 5),      # Cyclosporin-Klasse
+        ("protein", "antibody"):            (99.5, 100.0, 5000.0, 5),    # mAbs
+        ("protein", "enzyme"):              (95.0, 10000.0, 15.0, 3),    # Industrieenzyme
+    }
+
+    def _apply_type_defaults():
+        """Setzt realistische Industrie-Defaults für andere Felder, sobald
+        der Type/Subtype manuell geändert wurde. Wir setzen NUR Felder,
+        die der User noch nicht selbst angefasst hat (Streamlit-State-
+        Heuristik: Feld noch im 'initial value'-Zustand).
+        Wichtig: Callback läuft vor dem Rerun, darf session_state freien
+        Widget-Keys zuweisen."""
+        mtype = st.session_state.get("proc_molecule_type_v2")
+        msub = st.session_state.get("proc_molecule_subtype_v2")
+        defaults = TYPE_DEFAULTS.get((mtype, msub)) or TYPE_DEFAULTS.get((mtype, "non_volatile"))
+        if not defaults:
+            return
+        purity, scale, raw_cost, steps = defaults
+        # Immer überschreiben — der User hat ja gerade aktiv Type/Subtype
+        # gewechselt, also will er typischerweise neue passende Defaults sehen.
+        st.session_state["proc_purity_percent"] = float(purity)
+        st.session_state["proc_scale_kg_per_year"] = float(scale)
+        st.session_state["proc_raw_cost_eur_per_kg"] = float(raw_cost)
+        st.session_state["proc_number_of_steps"] = int(steps)
+
     def _lock_autofill():
         st.session_state.proc_autofill_locked = True
         # User has manually overridden molecule type/subtype.
@@ -354,6 +389,8 @@ def show_start_page():
                 "Manueller Override aktiv: erkannte Molekül-Repräsentation wurde "
                 "verworfen, da der Molekültyp manuell geändert wurde."
             )
+        # Auch Industrie-Defaults für die anderen Felder anwenden.
+        _apply_type_defaults()
 
     def _try_autofill():
         name = str(st.session_state.get("proc_molecule_name") or "").strip()
@@ -513,51 +550,78 @@ def show_start_page():
     )
 
     # ----- SECTION 3: Marktbedingungen (Ist-Zustand) -----
-    st.markdown("---")
-    st.subheader(t("section_3_title"))
-    st.caption(t("section_3_caption"))
-    num_qualified_suppliers = st.number_input(
-        t("num_suppliers_label"),
-        min_value=1,
-        max_value=20,
-        value=3,
-        step=1,
-        key="proc_num_suppliers",
-        help=t("num_suppliers_help"),
-    )
-    lead_time_weeks = st.number_input(
-        t("lead_time_label"),
-        min_value=0.5,
-        max_value=52.0,
-        value=4.0,
-        step=0.5,
-        format="%.1f",
-        key="proc_lead_time_weeks",
-        help=t("lead_time_help"),
-    )
-    single_region_concentration = st.checkbox(
-        t("single_region_label"),
-        value=False,
-        key="proc_single_region",
-        help=t("single_region_help"),
-    )
+    # Feedback-Runde-3: im Greenfield-Modus kann der User die Marktbedingungen
+    # NICHT kennen (Lieferanten + Edukt-Preis hängen von der nicht-existenten
+    # Route ab). Dann blenden wir die Section komplett aus und nutzen
+    # Industrie-Benchmark-Defaults basierend auf dem Molekül-Typ.
+    if has_existing_process:
+        st.markdown("---")
+        st.subheader(t("section_3_title"))
+        st.caption(t("section_3_caption"))
+        num_qualified_suppliers = st.number_input(
+            t("num_suppliers_label"),
+            min_value=1,
+            max_value=20,
+            value=3,
+            step=1,
+            key="proc_num_suppliers",
+            help=t("num_suppliers_help"),
+        )
+        lead_time_weeks = st.number_input(
+            t("lead_time_label"),
+            min_value=0.5,
+            max_value=52.0,
+            value=4.0,
+            step=0.5,
+            format="%.1f",
+            key="proc_lead_time_weeks",
+            help=t("lead_time_help"),
+        )
+        single_region_concentration = st.checkbox(
+            t("single_region_label"),
+            value=False,
+            key="proc_single_region",
+            help=t("single_region_help"),
+        )
 
-    raw_material_cost_eur_per_kg = st.number_input(
-        t("raw_cost_label"),
-        min_value=0.1,
-        max_value=100_000.0,
-        value=50.0,
-        step=1.0,
-        format="%.2f",
-        key="proc_raw_cost_eur_per_kg",
-        help=t("raw_cost_help"),
-    )
-    strict_waste_constraints = st.checkbox(
-        t("strict_waste_label"),
-        value=False,
-        key="proc_strict_waste",
-        help=t("strict_waste_help"),
-    )
+        raw_material_cost_eur_per_kg = st.number_input(
+            t("raw_cost_label"),
+            min_value=0.1,
+            max_value=100_000.0,
+            value=50.0,
+            step=1.0,
+            format="%.2f",
+            key="proc_raw_cost_eur_per_kg",
+            help=t("raw_cost_help"),
+        )
+        strict_waste_constraints = st.checkbox(
+            t("strict_waste_label"),
+            value=False,
+            key="proc_strict_waste",
+            help=t("strict_waste_help"),
+        )
+    else:
+        # Greenfield: realistische Industrie-Defaults pro Type/Subtype.
+        # Anchors basierend auf publizierten Pharma-Benchmarks (vgl. cogs_estimator.py).
+        st.markdown("---")
+        st.info(t("greenfield_market_info"))
+        _market_defaults = {
+            ("small_molecule", "non_volatile"): (3, 4.0, False, 20.0, True),   # API-Bulk
+            ("small_molecule", "volatile"):     (5, 2.0, False, 1.0,  False),  # Solvent-Commodity
+            ("natural_product", "alkaloid"):    (2, 6.0, True,  100.0, True),
+            ("natural_product", "terpene"):     (3, 4.0, False, 80.0, False),
+            ("peptide", "linear"):              (2, 6.0, False, 1000.0, True),
+            ("peptide", "cyclic"):              (2, 8.0, False, 2000.0, True),
+            ("protein", "antibody"):            (2, 8.0, False, 5000.0, True),
+            ("protein", "enzyme"):              (3, 4.0, False, 15.0, False),
+        }
+        _key = (molecule_type, molecule_subtype)
+        _defaults = _market_defaults.get(_key, (3, 4.0, False, 50.0, True))
+        (num_qualified_suppliers,
+         lead_time_weeks,
+         single_region_concentration,
+         raw_material_cost_eur_per_kg,
+         strict_waste_constraints) = _defaults
 
     # ----- SECTION 4: Verfügbare Methodiken & Equipment im Labor -----
     st.markdown("---")

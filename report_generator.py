@@ -1025,6 +1025,16 @@ def export_report_pdf(
         if concrete.get("expected_final_purity"):
             elems.append(Paragraph(L("pdf_achievable_purity"), styles["Section"]))
             elems.append(Paragraph(_safe_val(concrete.get("expected_final_purity")), normal))
+        # Production / upstream steps (Feedback-Runde-3 — vorher fehlte das
+        # komplett; User sah nur Downstream und wusste nicht, wie er das
+        # Roh-Produkt überhaupt herstellt).
+        prod_steps = concrete.get("production_steps") or []
+        if prod_steps:
+            prod_header = ("Produktions-Schritte (Upstream)" if lang == "de"
+                           else "Production steps (upstream)")
+            elems.append(Paragraph(prod_header, styles["Section"]))
+            for i, s in enumerate(prod_steps, 1):
+                elems.append(Paragraph(f"{i}. {_safe_val(s)}", normal))
         steps = concrete.get("downstream_steps") or []
         if steps:
             elems.append(Paragraph(L("pdf_downstream_steps"), styles["Section"]))
