@@ -401,9 +401,21 @@ def _gather_downstream_steps(
 
 def _gather_upstream_steps(
     process_input: Dict[str, Any],
+    concrete_recs: Optional[Dict[str, Any]] = None,
     lang: str = "de",
 ) -> List[str]:
-    """Build upstream/synthesis-step labels."""
+    """Build upstream/synthesis-step labels.
+
+    Priority (Feedback-Runde-3):
+    1. concrete_recommendations.production_steps (curated, most specific)
+    2. Inferred from method (generic fallback)
+    """
+    # Curated production steps win over generic fallback
+    if concrete_recs and isinstance(concrete_recs, dict):
+        prod = concrete_recs.get("production_steps") or []
+        if prod:
+            return list(prod[:6])
+
     method = (process_input.get("method") or "").lower()
     n_steps = process_input.get("number_of_steps")
     n = int(n_steps) if isinstance(n_steps, (int, float)) and n_steps else None
@@ -452,7 +464,7 @@ def build_process_flow_drawing(
     except Exception:
         return None
 
-    upstream = _gather_upstream_steps(process_input, lang)
+    upstream = _gather_upstream_steps(process_input, concrete_recs, lang)
     downstream = _gather_downstream_steps(process_input, concrete_recs, lang)
     if not upstream and not downstream:
         return None
@@ -570,7 +582,7 @@ def build_process_flow_legend(
     Used by the PDF report to render a description list directly below
     the diagram, addressing the "what does Stamm/Inokulum mean?" gap.
     """
-    upstream = _gather_upstream_steps(process_input, lang)[:4]
+    upstream = _gather_upstream_steps(process_input, concrete_recs, lang)[:4]
     downstream = _gather_downstream_steps(process_input, concrete_recs, lang)[:4]
 
     fallback_de = "Standardschritt für diese Prozessklasse — Details abhängig vom konkreten Equipment."

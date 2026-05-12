@@ -258,6 +258,15 @@ MOLECULE_DATABASE: List[Dict[str, Any]] = [
      "external_id": "DrugBank:DB01276",
      "representation_note": "GLP-1-Mimetikum (Exendin-4); synthetisch via SPPS.",
      "molecular_weight_kda": 4.19},
+    # Insulin: 51 AA (A-Kette 21 + B-Kette 30, 2 inter-Disulfide + 1 intra),
+    # an der Peptid/Protein-Grenze. Pharmakologisch und in der Lehre
+    # üblicherweise als Peptid-Hormon klassifiziert.
+    {"name": "Insulin", "molecule_type": "peptide", "molecule_subtype": "linear",
+     "smiles": None,
+     "sequence": "GIVEQCCTSICSLYQLENYCN | FVNQHLCGSHLVEALYLVCGERGFFYTPKT (A+B chain, 2 inter-chain SS)",
+     "external_id": "DrugBank:DB00030",
+     "representation_note": "51-AA-Peptidhormon (A-Kette 21 + B-Kette 30, durch 2 Disulfide verknüpft); rekombinant in E. coli (Refolding) oder Pichia pastoris (sekretorisch).",
+     "molecular_weight_kda": 5.81},
 
     # ---------------- PEPTIDES — cyclic (extension) ----------------
     # Complex cyclic peptides — SMILES omitted, external_id authoritative.
@@ -337,6 +346,33 @@ MOLECULE_DATABASE: List[Dict[str, Any]] = [
      "external_id": "UniProt:P00805",
      "representation_note": "E. coli L-Asparaginase II (Tetramer ~140 kDa); Krebstherapie bei akuter lymphatischer Leukämie (ALL).",
      "molecular_weight_kda": 34.0},
+
+    # ---------------- PROTEINS — recombinant therapeutics (extension) ----------------
+    # These are rekombinante therapeutische Proteine (Nicht-Antikörper) — sie
+    # passen nicht in die Antibody-Klasse, aber Subtype "enzyme" ist die nächste
+    # verfügbare Kategorie. Die korrekte DSP-Sequenz wird via MOLECULE_HINTS in
+    # concrete_recommendations.py geliefert (z. B. Protein-A NICHT verwendet
+    # für EPO/Filgrastim/Somatropin, da keine Fc-Region).
+    {"name": "Erythropoietin", "molecule_type": "protein", "molecule_subtype": "enzyme",
+     "smiles": None,
+     "external_id": "DrugBank:DB00016",
+     "representation_note": "165-AA glykosyliertes Hormon (Erypo/Epogen/Aranesp); rekombinant in CHO-Zellen — komplexe Glykosylierung kritisch für Halbwertszeit und Bioaktivität.",
+     "molecular_weight_kda": 30.4},
+    {"name": "Filgrastim", "molecule_type": "protein", "molecule_subtype": "enzyme",
+     "smiles": None,
+     "external_id": "DrugBank:DB00099",
+     "representation_note": "175-AA Granulozyten-Kolonie-stimulierender Faktor (G-CSF); rekombinant in E. coli (Neupogen) — nicht glykosyliert, daher E. coli möglich.",
+     "molecular_weight_kda": 18.8},
+    {"name": "Etanercept", "molecule_type": "protein", "molecule_subtype": "antibody",
+     "smiles": None,
+     "external_id": "DrugBank:DB00005",
+     "representation_note": "Fusionsprotein: extrazellulärer TNFR2-Rezeptor (p75) + humanes IgG1-Fc; CHO-Zellen — Fc-Domäne ermöglicht Protein-A-Capture wie bei mAbs.",
+     "molecular_weight_kda": 150.0},
+    {"name": "Somatropin", "molecule_type": "protein", "molecule_subtype": "enzyme",
+     "smiles": None,
+     "external_id": "DrugBank:DB00052",
+     "representation_note": "191-AA rekombinantes humanes Wachstumshormon (rhGH); E. coli (zytoplasmatisch oder periplasmatisch, mit Refolding) — nicht glykosyliert.",
+     "molecular_weight_kda": 22.1},
 
     # ---------------- NATURAL PRODUCTS — terpenes (extension) ----------------
     {"name": "α-Pinene", "molecule_type": "natural_product", "molecule_subtype": "terpene",

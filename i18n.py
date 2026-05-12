@@ -107,6 +107,15 @@ TRANSLATIONS = {
         "en": ("Greenfield mode: Helixar will pick a suitable production method and estimate the number of steps, "
                "based on the molecule, requirements, and equipment."),
     },
+    "greenfield_market_info": {
+        "de": ("Greenfield-Modus: Marktbedingungen (Lieferanten, Edukt-Preis, Lieferzeit) sind ohne konkrete "
+               "Prozess-Route nicht bekannt — Helixar nutzt Industrie-Benchmark-Werte für deine Molekül-Klasse "
+               "als Schätzung. Sobald du eine Prozess-Route festlegst, kannst du die konkreten Werte "
+               "eingeben für eine präzisere Analyse."),
+        "en": ("Greenfield mode: market conditions (suppliers, raw-material price, lead time) are unknown without "
+               "a concrete process route — Helixar uses industry-benchmark values for your molecule class as an "
+               "estimate. Once you commit to a route, you can enter the actual values for a more precise analysis."),
+    },
 
     # ====== Section 1 — Aktueller Prozess ======
     "section_1_title": {"de": "1. Aktueller Prozess", "en": "1. Current Process"},
@@ -122,12 +131,18 @@ TRANSLATIONS = {
     "method_chemical": {"de": "chemisch", "en": "chemical"},
     "method_biotechnological": {"de": "biotechnologisch", "en": "biotechnological"},
     "method_extraction": {"de": "Extraktion", "en": "extraction"},
-    "number_of_steps_label": {"de": "Anzahl Syntheseschritte", "en": "Number of Synthesis Steps"},
+    "number_of_steps_label": {"de": "Anzahl Prozessschritte", "en": "Number of Process Steps"},
     "number_of_steps_help": {
-        "de": ("Anzahl chemischer/enzymatischer Reaktionsstufen vom Edukt zum Zielprodukt. "
-               "Beispiel: Vanillin via Ferulasäure-Pathway = ca. 2–4 Schritte; Aspirin aus Salicylsäure = 1 Schritt."),
-        "en": ("Number of chemical/enzymatic reaction steps from starting material to target product. "
-               "Example: vanillin via ferulic-acid pathway = ca. 2–4 steps; aspirin from salicylic acid = 1 step."),
+        "de": ("Gesamtzahl der Prozessschritte vom Edukt/Rohmaterial zum Zielprodukt — "
+               "inklusive Synthese-, Fermentations-, Extraktions- und Reinigungsschritten. "
+               "Beispiele: Aspirin chemisch = ca. 2 Schritte (Acetylierung + Umkristallisation); "
+               "Vanillin biotech = ca. 5 Schritte (Vorkultur + Fermentation + 3 DSP-Stufen); "
+               "Trastuzumab biotech = ca. 6–8 Schritte (Fermentation + Capture + Polishing + Polishing-Sequenz)."),
+        "en": ("Total number of process steps from starting material to target product — "
+               "including synthesis, fermentation, extraction and purification steps. "
+               "Examples: aspirin chemical = ca. 2 steps (acetylation + recrystallization); "
+               "vanillin biotech = ca. 5 steps (pre-culture + fermentation + 3 DSP stages); "
+               "trastuzumab biotech = ca. 6–8 steps (fermentation + capture + polishing sequence)."),
     },
 
     # ====== Section 2 — Anforderungen ======
@@ -380,8 +395,8 @@ TRANSLATIONS = {
         "en": "Please provide the target molecule (required).",
     },
     "warn_steps_required": {
-        "de": "Bitte geben Sie die Anzahl Syntheseschritte an (Pflichtfeld).",
-        "en": "Please provide the number of synthesis steps (required).",
+        "de": "Bitte geben Sie die Anzahl Prozessschritte an (Pflichtfeld).",
+        "en": "Please provide the number of process steps (required).",
     },
     "error_protein_chemical": {
         "de": ("Unmögliche Kombination: Proteine können nicht chemisch synthetisiert werden. "
@@ -514,8 +529,8 @@ TRANSLATIONS = {
         "en": "Cost vs. purity: higher purity typically increases purification costs.",
     },
     "pdf_tradeoff_default_2": {
-        "de": "Effizienz vs. Komplexität: Mehr Syntheseschritte erhöhen Risiko und reduzieren Nettoeffizienz.",
-        "en": "Efficiency vs. complexity: more synthesis steps increase risk and reduce net efficiency.",
+        "de": "Effizienz vs. Komplexität: Mehr Prozessschritte erhöhen Risiko und reduzieren Nettoeffizienz.",
+        "en": "Efficiency vs. complexity: more process steps increase risk and reduce net efficiency.",
     },
     "pdf_fallback_action_1": {
         "de": "Bewerten Sie alternative Syntheserouten zur Reduktion der Schrittanzahl und Komplexität.",

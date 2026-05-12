@@ -29,6 +29,7 @@ RULE_SOURCES = {
     "switch_chem_to_biotech": "Anastas & Warner, Green Chemistry: Theory and Practice, Oxford Univ. Press 1998 (ISBN 978-0-19-850698-0); Sheldon, Green Chem. 2017 — E-factor analysis (doi:10.1039/C7GC00149E)",
     "step_consolidation": "Vollhardt & Schore, Organic Chemistry, 8th ed. 2018, Macmillan/Freeman (ISBN 978-1-319-07945-1) — telescoping and step economy; Newhouse et al., Angew. Chem. Int. Ed. 2009 (doi:10.1002/anie.200806239)",
     "spps_to_recombinant": "Bray BL., Nat. Rev. Drug Discov. 2003 — Large-scale manufacture of peptide therapeutics by chemical synthesis (doi:10.1038/nrd1133); Sanchez-Garcia et al., Microb. Cell Fact. 2016 — Recombinant pharmaceuticals from microbial cells (doi:10.1186/s12934-016-0437-3)",
+    "dsp_intensification": "Subramanian G., Continuous Biomanufacturing 2018, Wiley (ISBN 978-3-527-34029-6) — multi-column continuous chromatography; Kelley B., MAbs 2009 — Industrial biopharma DSP (doi:10.4161/mabs.1.5.9448); Klutz et al., Biotechnol. Prog. 2015 — Cost reduction strategies for mAb DSP (doi:10.1002/btpr.2099)",
     "biotech_titer_optimization": "Wurm FM., Nat. Biotechnol. 2004 — Production of recombinant protein therapeutics in CHO (doi:10.1038/nbt1026); Lim et al., Curr. Opin. Biotechnol. 2010 — High-yield expression systems for biopharmaceuticals (doi:10.1016/j.copbio.2010.07.005)",
     "purity_gap": "Walsh G., Pharmaceutical Biotechnology, 2nd ed. 2018, Wiley (ISBN 978-1-119-11518-7) — API-grade purification standards",
     "industrial_no_bioreactor": "Doran, Bioprocess Engineering Principles, 2nd ed. 2013, Academic Press (ISBN 978-0-12-220851-5) — bioreactor scale-up",
@@ -74,6 +75,43 @@ ACTION_TEXTS = {
                 "time-to-market 6–18 months for strain optimization."
             ),
             "prerequisites": "Bioreactor ≥ 1 L, fermentation know-how, possibly strain license.",
+        },
+    },
+    "dsp_intensification": {
+        "de": {
+            "title": "Aufarbeitung intensivieren (Multi-Column, Inline-Integration) — {steps} Schritte",
+            "rationale": (
+                "Bei biotechnologischer Protein-/Peptid-Produktion sind die meisten "
+                "Prozessschritte obligatorische DSP-Operationen (Capture, Virus-Inaktivierung, "
+                "Polishing). Statt Schritte zu reduzieren, lässt sich die Aufarbeitung "
+                "intensivieren: Multi-Column-Continuous-Chromatographie (MCC) ersetzt Batch-"
+                "Chromatographie; Inline-Filtration koppelt mehrere Polishing-Schritte; "
+                "Single-Use-Equipment verkürzt CIP/SIP-Zyklen."
+            ),
+            "expected_impact": (
+                "MCC reduziert Resin-Bedarf um 30–50 % bei gleicher Output-Kapazität. "
+                "Inline-Integration von AEX + Virusfiltration spart einen Unit-Operation-Zyklus. "
+                "Single-Use spart 20–35 % CapEx (kein CIP-System) + 10–25 % OpEx (weniger Stillstand). "
+                "GMP-Compliance bleibt vollständig erhalten."
+            ),
+            "prerequisites": "MCC-System (z. B. BioSMB, Cadence BioSMB), Single-Use-Bioreaktor + Filtrations-Skids, GMP-validierte Steuersoftware.",
+        },
+        "en": {
+            "title": "Intensify downstream (multi-column, inline integration) — {steps} steps",
+            "rationale": (
+                "In biotech protein/peptide production, most process steps are obligatory DSP "
+                "operations (capture, virus inactivation, polishing). Instead of reducing steps, "
+                "the workup can be intensified: multi-column continuous chromatography (MCC) "
+                "replaces batch chromatography; inline filtration couples polishing steps; "
+                "single-use equipment shortens CIP/SIP cycles."
+            ),
+            "expected_impact": (
+                "MCC reduces resin demand by 30–50 % at the same output capacity. "
+                "Inline integration of AEX + virus filtration eliminates one unit-operation cycle. "
+                "Single-use saves 20–35 % CapEx (no CIP system) + 10–25 % OpEx (less downtime). "
+                "GMP compliance is fully preserved."
+            ),
+            "prerequisites": "MCC system (e.g. BioSMB, Cadence BioSMB), single-use bioreactor + filtration skids, GMP-validated control software.",
         },
     },
     "spps_to_recombinant": {
@@ -693,17 +731,49 @@ def _rule_step_consolidation(p: Dict[str, Any], lang: str) -> List[Dict[str, Any
     if not p.get("has_existing_process") or not steps:
         return out
 
-    # Bug D: SPPS (Solid-Phase Peptide Synthesis) detection.
+    mtype = (p.get("molecule_type") or "").lower()
+    method = (p.get("method") or "").lower()
+
+    # Feedback-Runde-3, Issue 3a: Bei biotechnologischer Produktion von
+    # Proteinen / Peptiden sind die "Schritte" überwiegend obligatorische
+    # Aufarbeitungs-Schritte (Capture, Polishing, Virus-Inaktivierung etc.),
+    # NICHT Synthese-Stufen. Telescoping/One-Pot ist da unmöglich. Statt
+    # "Schritte reduzieren" emittieren wir die "alternative DSP-Strategien"-
+    # Empfehlung (kontinuierliche Chromatographie, Multi-Column-Capture, etc.).
+    is_biotech_biomolecule = (
+        method in ("biotechnological", "biotech")
+        and mtype in ("protein", "peptide")
+    )
+    if is_biotech_biomolecule and int(steps) >= 4:
+        if lang == "en":
+            cur = (f"{int(steps)} process steps — for biotech protein/peptide production, "
+                   "most steps are obligatory DSP operations (capture, virus inactivation, polishing) "
+                   "that cannot be telescoped or one-potted")
+            opt = ("Evaluate continuous downstream alternatives: multi-column continuous chromatography "
+                   "(MCC) reduces resin demand 30–50 %; integrated AEX + virus filtration as single "
+                   "inline step; single-use closed systems for sterility — 20–35 % CapEx + 10–25 % "
+                   "OpEx reduction without sacrificing GMP compliance")
+        else:
+            cur = (f"{int(steps)} Prozessschritte — bei biotechnologischer Protein-/Peptid-Produktion "
+                   "sind die meisten Schritte obligatorische DSP-Operationen (Capture, Virus-Inaktivierung, "
+                   "Polishing), die sich nicht via Telescoping/One-Pot reduzieren lassen")
+            opt = ("Alternative DSP-Strategien prüfen: Multi-Column-Continuous-Chromatographie (MCC) "
+                   "reduziert Resin-Bedarf um 30–50 %; integriertes AEX + Virusfiltration als ein "
+                   "Inline-Schritt; Single-Use-Closed-Systems für Sterilität — 20–35 % CapEx + "
+                   "10–25 % OpEx-Reduktion ohne GMP-Compliance-Verlust")
+        out.append(_make("dsp_intensification", lang, effort="high",
+                         current_state=cur, optimized_state=opt,
+                         steps=int(steps)))
+        return out
+
+    # SPPS (Solid-Phase Peptide Synthesis) detection.
     # When a peptide is produced via chemical synthesis with many steps, the
     # step count = number of amino-acid couplings = sequence length, which is
     # a hard biological constraint. Suggesting "reduce 30 → 28 steps" is
     # nonsensical there. The right advice is to switch to recombinant
     # production or evaluate a shorter analogue, not to telescope steps.
-    mtype = (p.get("molecule_type") or "").lower()
-    method = (p.get("method") or "").lower()
     is_spps = (mtype == "peptide" and method == "chemical" and int(steps) >= 15)
     if is_spps:
-        # Emit a route-switch suggestion instead of a step-count consolidation.
         if lang == "en":
             cur = f"SPPS with {int(steps)} couplings — step count is fixed by the peptide sequence; each coupling loses 1–5 % yield (overall yield typically 30–60 %)"
             opt = "Recombinant production (E. coli / yeast fusion expression with protease cleavage): 80–95 % overall yield, COGS reduction of 50–80 % for sequences > 15 aa, time-to-market 12–24 months"
