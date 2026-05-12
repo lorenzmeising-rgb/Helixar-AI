@@ -1059,6 +1059,15 @@ MOLECULE_HINTS: Dict[str, Dict[str, Any]] = {
 }
 
 
+# Merge in the extended hints for the remaining 57 molecules of the DB.
+# Kept in a separate module so this main file stays readable.
+try:
+    from molecule_hints_extension import EXTENSION_HINTS as _EXT_HINTS
+    MOLECULE_HINTS.update(_EXT_HINTS)
+except Exception:
+    pass
+
+
 # Generic purification recommendations by molecule type, language-tagged.
 TYPE_DOWNSTREAM_HINTS: Dict[str, Dict[str, Any]] = {
     "small_molecule": {
