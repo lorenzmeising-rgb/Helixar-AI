@@ -1,29 +1,26 @@
-# macOS
-.DS_Store
-
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-*.egg-info/
-
-# venv
-.venv/
-venv/
-env/
-
-# IDE
-.vscode/
-.idea/
-
-# Streamlit cache
-.streamlit/secrets.toml
-
-# Local-only modules (kept out of pitch-ready repo)
-sensitivity_analysis.py
-custom_molecule.py
 
 # Batch-test generated outputs
+# IDE
+# Local-only modules (kept out of pitch-ready repo)
+# Python
+# Streamlit cache
+# macOS
+# venv
+*.bak.*
+*.egg-info/
+*.pyc
+*.pyd
+*.pyo
+.DS_Store
+.Python
+.cache/
+.idea/
+.streamlit/secrets.toml
+.venv/
+.vscode/
+__pycache__/
+custom_molecule.py
+env/
+sensitivity_analysis.py
 test_outputs/
+venv/

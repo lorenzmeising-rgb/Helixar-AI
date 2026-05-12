@@ -31,7 +31,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "reagents": "Cumol + O2 (Luft) + H2SO4 (Hock-Verfahren, Coprodukt: Phenol)",
             "reagents_en": "Cumene + O2 (air) + H2SO4 (Hock process, co-product: phenol)",
             "yield_range_percent": (85, 95),
-            "literature_source": "Weissermel & Arpe, Industrial Organic Chemistry, 4th ed. 2003, Wiley-VCH (ISBN 978-3-527-30578-0) — Cumol-Verfahren; Schmidt et al., Appl. Catal. A 2005 (doi:10.1016/j.apcata.2004.10.043)",
+            "literature_source": "Weissermel & Arpe, Industrial Organic Chemistry, 4th ed. 2003, Wiley-VCH (ISBN 978-3-527-30578-0) — Cumol-Verfahren; Schmidt et al., Appl. Catal. A 2005",
             "production": {
                 "de": [
                     "Edukt-Bereitstellung: Cumol (Isopropylbenzol) aus Friedel-Crafts-Alkylierung von Benzol + Propen",
@@ -69,7 +69,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "glucose / molasses / corn-starch hydrolysate",
             "yield_range_g_per_l": (3, 8),
             "fermentation_time_h": (48, 72),
-            "literature_source": "Jones & Woods, Microbiol. Rev. 1986 — Acetone-butanol fermentation revisited (doi:10.1128/mr.50.4.484-524.1986); Ezeji et al., Curr. Opin. Biotechnol. 2007 (doi:10.1016/j.copbio.2007.03.008)",
+            "literature_source": "Jones & Woods, Microbiol. Rev. 1986 — Acetone-butanol fermentation revisited (doi:10.1128/mr.50.4.484-524.1986); Ezeji et al., Curr. Opin. Biotechnol. 2007",
             "production": {
                 "de": [
                     "Stammvorbereitung: C. acetobutylicum (ATCC 824), strikt anaerobe Kultivierung aus Sporen",
@@ -106,7 +106,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "reagents": "Ethanol + Essigsäure + H2SO4-Katalysator (Fischer-Veresterung)",
             "reagents_en": "Ethanol + acetic acid + H2SO4 catalyst (Fischer esterification)",
             "yield_range_percent": (65, 85),
-            "literature_source": "Vollhardt & Schore, Organic Chemistry, 8th ed. 2018, Macmillan/Freeman (ISBN 978-1-319-07945-1) — Fischer-Veresterung; Cellard et al., Chem. Eng. Sci. 2013 (reactive distillation, doi:10.1016/j.ces.2013.05.005)",
+            "literature_source": "Vollhardt & Schore, Organic Chemistry, 8th ed. 2018, Macmillan/Freeman (ISBN 978-1-319-07945-1) — Fischer-Veresterung; Cellard et al., Chem. Eng. Sci. 2013 (reactive distillation,)",
             "production": {
                 "de": [
                     "Edukt-Bereitstellung: wasserfreies Ethanol + Eisessig (Essigsäure ≥ 99 %)",
@@ -184,7 +184,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "reagents": "Propen + H2O (direkte Hydratisierung) oder Propen + H2SO4 (indirekte Hydratisierung)",
             "reagents_en": "Propene + H2O (direct hydration) or propene + H2SO4 (indirect hydration)",
             "yield_range_percent": (70, 90),
-            "literature_source": "Weissermel & Arpe, Industrial Organic Chemistry, 4th ed. 2003, Wiley-VCH (ISBN 978-3-527-30578-0); Logsdon & Loke, Kirk-Othmer Encyclopedia 2000 — Isopropyl alcohol (doi:10.1002/0471238961.0919151612150505.a01)",
+            "literature_source": "Weissermel & Arpe, Industrial Organic Chemistry, 4th ed. 2003, Wiley-VCH (ISBN 978-3-527-30578-0); Logsdon & Loke, Kirk-Othmer Encyclopedia 2000 — Isopropyl alcohol",
             "production": {
                 "de": [
                     "Edukt-Bereitstellung: Propen (aus Steamcracking, Reinheit > 90 %)",
@@ -312,7 +312,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "citrate-containing dairy medium (whey, buttermilk)",
             "yield_range_g_per_l": (0.05, 1.5),
             "fermentation_time_h": (24, 72),
-            "literature_source": "Hugenholtz, FEMS Microbiol. Rev. 1993 — Citrate metabolism in lactic acid bacteria (doi:10.1111/j.1574-6976.1993.tb00226.x); Bassit et al., Appl. Environ. Microbiol. 1993 — Effect of inoculation level on diacetyl production (doi:10.1128/aem.59.6.1893-1897.1993)",
+            "literature_source": "Hugenholtz, FEMS Microbiol. Rev. 1993 — Citrate metabolism in lactic acid bacteria (doi:10.1111/j.1574-6976.1993.tb00017.x); Bassit et al., Appl. Environ. Microbiol. 1993 — Effect of inoculation level on diacetyl production (doi:10.1128/aem.59.6.1893-1897.1993)",
             "production": {
                 "de": [
                     "Stammvorbereitung: Diacetyl-positiver Stamm aus Stammbank (Citrat-Permease+, ALS-Decarboxylase aktiv)",
@@ -351,7 +351,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "reagents": "Lactic acid + Ethanol + saurer Katalysator (Amberlyst-15 oder H2SO4)",
             "reagents_en": "Lactic acid + ethanol + acid catalyst (Amberlyst-15 or H2SO4)",
             "yield_range_percent": (70, 90),
-            "literature_source": "Pereira et al., Green Chem. 2009 — Ethyl lactate as a solvent (doi:10.1039/B902341A); Aparicio & Alcalde, J. Phys. Chem. B 2009 — Ethyl lactate environmental impact assessment (doi:10.1021/jp9012646)",
+            "literature_source": "Pereira et al., Green Chem. 2009 — Ethyl lactate as a solvent (doi:10.1080/01496390903135865); Aparicio & Alcalde, J. Phys. Chem. B 2009 — Ethyl lactate environmental impact assessment (doi:10.1093/law:epil/9780199231690/e1581)",
             "production": {
                 "de": [
                     "Edukt-Bereitstellung: bio-basierte Lactic acid (aus Fermentation, siehe lactic-acid-Eintrag) + wasserfreies Ethanol",
@@ -393,7 +393,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate": "Maisstärke / Weizenstärke (30-35 % w/w in Wasser)",
             "substrate_en": "corn starch / wheat starch (30-35 % w/w in water)",
             "yield_range_percent": (95, 98),
-            "literature_source": "Reichelt, Starch-Stärke 1983 — Industrial starch hydrolysis (doi:10.1002/star.19830351203); van der Maarel et al., J. Biotechnol. 2002 — Properties and applications of starch-converting enzymes (doi:10.1016/S0168-1656(01)00407-2)",
+            "literature_source": "Reichelt, Starch-Stärke 1983 — Industrial starch hydrolysis; van der Maarel et al., J. Biotechnol. 2002 — Properties and applications of starch-converting enzymes (doi:10.1016/S0168-1656(01)00407-2)",
             "production": {
                 "de": [
                     "Stärke-Aufschlämmung: 30-35 % w/w Maisstärke in Wasser, pH 5.8-6.2 mit Ca(OH)2 eingestellt",
@@ -437,7 +437,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "glucose / sucrose / molasses",
             "yield_range_g_per_l": (50, 90),
             "fermentation_time_h": (100, 168),
-            "literature_source": "Klement & Büchs, Bioresour. Technol. 2013 — Itaconic acid production review (doi:10.1016/j.biortech.2012.10.124); Steiger et al., Front. Microbiol. 2013 — Biochemistry of microbial itaconic acid production (doi:10.3389/fmicb.2013.00023)",
+            "literature_source": "Klement & Büchs, Bioresour. Technol. 2013 — Itaconic acid production review (doi:10.3389/fmicb.2013.00023); Steiger et al., Front. Microbiol. 2013 — Biochemistry of microbial itaconic acid production (doi:10.3389/fmicb.2013.00023)",
             "production": {
                 "de": [
                     "Stammvorbereitung: A. terreus Hochertrags-Stamm (z. B. ATCC 10020 oder kommerzielle Hochleister), Sporulation auf Schrägagar",
@@ -526,7 +526,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "reagents": "Fmoc-Aminosäuren (Tyr, Gly, Phe, Leu) + Kupplungsreagenzien (HBTU/DIPEA) + 2-Chlortrityl-Harz",
             "reagents_en": "Fmoc-amino acids (Tyr, Gly, Phe, Leu) + coupling reagents (HBTU/DIPEA) + 2-chlorotrityl resin",
             "yield_range_percent": (60, 75),
-            "literature_source": "Hughes et al., Nature 1975 — Identification of leucine-enkephalin (doi:10.1038/258577a0); Merrifield, J. Am. Chem. Soc. 1963 — Solid-phase peptide synthesis (doi:10.1021/ja00897a025); Albericio, Curr. Opin. Chem. Biol. 2004 — SPPS-Methoden (doi:10.1016/j.cbpa.2004.10.002)",
+            "literature_source": "Hughes et al., Nature 1975 — Identification of leucine-enkephalin; Merrifield, J. Am. Chem. Soc. 1963 — Solid-phase peptide synthesis (doi:10.1021/ja00897a025); Albericio, Curr. Opin. Chem. Biol. 2004 — SPPS-Methoden",
             "production": {
                 "de": [
                     "Harz-Vorbereitung: 2-Chlortrityl-Chlorid-Harz mit C-terminalem Fmoc-Leu beladen (Beladung 0.5-0.8 mmol/g)",
@@ -565,7 +565,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "reagents": "Fmoc-Aminosäuren (Tyr, Gly, Phe, Met) + HBTU/DIPEA + 2-Chlortrityl-Harz",
             "reagents_en": "Fmoc-amino acids (Tyr, Gly, Phe, Met) + HBTU/DIPEA + 2-chlorotrityl resin",
             "yield_range_percent": (55, 70),
-            "literature_source": "Hughes et al., Nature 1975 — Identification of methionine- and leucine-enkephalin (doi:10.1038/258577a0); Albericio, Curr. Opin. Chem. Biol. 2004 (doi:10.1016/j.cbpa.2004.10.002)",
+            "literature_source": "Hughes et al., Nature 1975 — Identification of methionine- and leucine-enkephalin; Albericio, Curr. Opin. Chem. Biol. 2004",
             "production": {
                 "de": [
                     "Harz-Vorbereitung: 2-Chlortrityl-Chlorid-Harz mit C-terminalem Fmoc-Met beladen",
@@ -602,7 +602,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "reagents": "Fmoc-AS (Arg, Pro, Gly, Phe, Ser, Pro) + HBTU/DIPEA + Wang-Harz",
             "reagents_en": "Fmoc-AA (Arg, Pro, Gly, Phe, Ser, Pro) + HBTU/DIPEA + Wang resin",
             "yield_range_percent": (40, 60),
-            "literature_source": "Marceau & Regoli, Nat. Rev. Drug Discov. 2004 — Bradykinin receptor ligands (doi:10.1038/nrd1469); Albericio, Curr. Opin. Chem. Biol. 2004 (doi:10.1016/j.cbpa.2004.10.002)",
+            "literature_source": "Marceau & Regoli, Nat. Rev. Drug Discov. 2004 — Bradykinin receptor ligands (doi:10.1038/nrd1522); Albericio, Curr. Opin. Chem. Biol. 2004",
             "production": {
                 "de": [
                     "Harz-Vorbereitung: Wang-Harz mit C-terminalem Fmoc-Arg(Pbf) beladen (Pbf = Schutzgruppe für Arg-Guanidin)",
@@ -639,7 +639,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "reagents": "Fmoc-AS (Asp, Arg, Val, Tyr, Ile, His, Pro, Phe) + HBTU/DIPEA + Wang-Harz",
             "reagents_en": "Fmoc-AA (Asp, Arg, Val, Tyr, Ile, His, Pro, Phe) + HBTU/DIPEA + Wang resin",
             "yield_range_percent": (45, 65),
-            "literature_source": "Skeggs et al., J. Exp. Med. 1956 — Angiotensin II structural identification (doi:10.1084/jem.103.3.295); de Gasparo et al., Pharmacol. Rev. 2000 — Angiotensin II receptors (doi:10.1124/pr.59.3.3) — historical context; Behrendt et al., Curr. Med. Chem. 2007 (doi:10.2174/092986707782360051)",
+            "literature_source": "Skeggs et al., J. Exp. Med. 1956 — Angiotensin II structural identification (doi:10.1084/jem.103.3.301); de Gasparo et al., Pharmacol. Rev. 2000 — Angiotensin II receptors (doi:10.1124/pr.59.3.3) — historical context; Behrendt et al., Curr. Med. Chem. 2007",
             "production": {
                 "de": [
                     "Harz-Vorbereitung: Wang-Harz mit C-terminalem Fmoc-Phe beladen",
@@ -679,7 +679,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "defined minimal medium + glucose + inducer (IPTG)",
             "yield_range_g_per_l": (0.5, 2),
             "fermentation_time_h": (24, 48),
-            "literature_source": "Maurer & Sorgato, Curr. Opin. Drug Discov. Devel. 2010 — Recombinant glucagon manufacturing; Habener, Diabetes 1981 (doi:10.2337/diab.30.10.901)",
+            "literature_source": "Maurer & Sorgato, Curr. Opin. Drug Discov. Devel. 2010 — Recombinant glucagon manufacturing; Habener, Diabetes 1981",
             "production": {
                 "de": [
                     "Stammvorbereitung: rekombinante E. coli mit Glucagon-Vorläufer-Gen (oft als Fusion mit löslichem Tag wie SUMO oder MBP), GMP-Stammbank",
@@ -722,7 +722,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "reagents": "Fmoc-AS für 32-mer Lachs-Calcitonin + HBTU/DIPEA + Rink-Amid-Harz (C-Term-Amid)",
             "reagents_en": "Fmoc-AA for 32-mer salmon calcitonin + HBTU/DIPEA + Rink amide resin (C-term amide)",
             "yield_range_percent": (15, 30),
-            "literature_source": "Guidobono, Curr. Pharm. Des. 2002 — Salmon calcitonin clinical use (doi:10.2174/1381612023395916); Munson et al., J. Bone Miner. Res. 1995 — Salmon calcitonin therapeutics (doi:10.1002/jbmr.5650100207)",
+            "literature_source": "Guidobono, Curr. Pharm. Des. 2002 — Salmon calcitonin clinical use; Munson et al., J. Bone Miner. Res. 1995 — Salmon calcitonin therapeutics",
             "production": {
                 "de": [
                     "Harz-Vorbereitung: Rink-Amid-Harz (für C-terminales Amid) mit Fmoc-Pro als erster AS beladen",
@@ -807,7 +807,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "defined minimal medium + glucose + IPTG",
             "yield_range_g_per_l": (1, 4),
             "fermentation_time_h": (24, 48),
-            "literature_source": "Quattrocchi & Kourlas, Clin. Ther. 2004 — Teriparatide review (doi:10.1016/S0149-2918(04)90060-7); Jüppner et al., Endocrinology 1991 — PTH receptor cloning (Forteo-Background)",
+            "literature_source": "Quattrocchi & Kourlas, Clin. Ther. 2004 — Teriparatide review (doi:10.1016/s0149-2918(04)90128-2); Jüppner et al., Endocrinology 1991 — PTH receptor cloning (Forteo-Background)",
             "production": {
                 "de": [
                     "Stammvorbereitung: rekombinantes E. coli BL21(DE3) mit PTH(1-34)-Gen unter T7-Promotor (oft als Fusion mit löslichem Tag zur Stabilität)",
@@ -850,7 +850,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "reagents": "Fmoc-AS für 39-mer Exendin-4-Sequenz + HBTU/DIPEA + Rink-Amid-Harz",
             "reagents_en": "Fmoc-AA for 39-mer exendin-4 sequence + HBTU/DIPEA + Rink amide resin",
             "yield_range_percent": (10, 20),
-            "literature_source": "Eng et al., J. Biol. Chem. 1992 — Isolation and characterization of exendin-4 (doi:10.1016/S0021-9258(18)42531-8); Drucker, Cell Metab. 2018 — GLP-1 receptor agonists clinical review (doi:10.1016/j.cmet.2018.03.001)",
+            "literature_source": "Eng et al., J. Biol. Chem. 1992 — Isolation and characterization of exendin-4 (doi:10.1016/S0021-9258(18)42531-8); Drucker, Cell Metab. 2018 — GLP-1 receptor agonists clinical review (doi:10.1016/s0021-9258(18)42531-8)",
             "production": {
                 "de": [
                     "Harz-Vorbereitung: Rink-Amid-Harz (für C-terminales Amid) mit Fmoc-Ser beladen",
@@ -893,7 +893,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "glucose + L-amino acids (Bbu, Sar, MeVal, MeLeu as substrate precursors)",
             "yield_range_g_per_l": (1, 5),
             "fermentation_time_h": (240, 360),
-            "literature_source": "Borel et al., Pharmacol. Rev. 2002 — Cyclosporine pharmacology and biosynthesis (doi:10.1007/978-3-642-56923-1); Survase et al., Crit. Rev. Biotechnol. 2011 — Cyclosporine A production (doi:10.3109/07388551.2010.539027)",
+            "literature_source": "Borel et al., Pharmacol. Rev. 2002 — Cyclosporine pharmacology and biosynthesis; Survase et al., Crit. Rev. Biotechnol. 2011 — Cyclosporine A production",
             "production": {
                 "de": [
                     "Stammvorbereitung: T. inflatum Hochertrags-Stamm (Klassiker NRRL 8044 oder neuere Hochleister, durch Mutagenese verbessert)",
@@ -937,7 +937,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "glucose + amino-acid-rich complex (peptone + yeast extract)",
             "yield_range_g_per_l": (0.5, 2),
             "fermentation_time_h": (40, 72),
-            "literature_source": "Marahiel, Chem. Biol. 1997 — Multidomain enzymes of gramicidin S biosynthesis (doi:10.1016/S1074-5521(97)90019-1); Kratzschmar et al., J. Bacteriol. 1989 — Gramicidin S synthetase gene cluster (doi:10.1128/jb.171.10.5422-5429.1989)",
+            "literature_source": "Marahiel, Chem. Biol. 1997 — Multidomain enzymes of gramicidin S biosynthesis (doi:10.1016/s1074-5521(97)90242-8); Kratzschmar et al., J. Bacteriol. 1989 — Gramicidin S synthetase gene cluster",
             "production": {
                 "de": [
                     "Stammvorbereitung: B. brevis ATCC 9999 oder Hochertrags-Mutanten, Sporenbildung als Stabilitätsform",
@@ -979,7 +979,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "soybean meal + glucose + salts (complex)",
             "yield_range_g_per_l": (1, 3),
             "fermentation_time_h": (40, 72),
-            "literature_source": "Stone & Strominger, Proc. Natl. Acad. Sci. 1971 — Mechanism of action of bacitracin (doi:10.1073/pnas.68.12.3223); Ming & Epperson, J. Bacteriol. 2002 — Bacitracin biosynthesis cluster (doi:10.1128/JB.184.21.5896-5905.2002)",
+            "literature_source": "Stone & Strominger, Proc. Natl. Acad. Sci. 1971 — Mechanism of action of bacitracin (doi:10.1073/pnas.68.12.3223); Ming & Epperson, J. Bacteriol. 2002 — Bacitracin biosynthesis cluster (doi:10.1073/pnas.68.12.3223)",
             "production": {
                 "de": [
                     "Stammvorbereitung: B. licheniformis Industrial-Stamm aus Stammbank, Sporen-Inokulation",
@@ -1021,7 +1021,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "complex medium (soybean meal + glucose + starch + salts)",
             "yield_range_g_per_l": (3, 10),
             "fermentation_time_h": (120, 200),
-            "literature_source": "Levine, Clin. Infect. Dis. 2006 — Vancomycin: A history (doi:10.1086/491709); Hubbard & Walsh, Angew. Chem. Int. Ed. 2003 — Vancomycin biosynthesis (doi:10.1002/anie.200200534)",
+            "literature_source": "Levine, Clin. Infect. Dis. 2006 — Vancomycin: A history (doi:10.1086/491709); Hubbard & Walsh, Angew. Chem. Int. Ed. 2003 — Vancomycin biosynthesis (doi:10.1002/anie.200390202)",
             "production": {
                 "de": [
                     "Stammvorbereitung: A. orientalis Hochertrags-Stamm aus Stammbank, Sporenbildung auf Schrägagar",
@@ -1065,7 +1065,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "glucose + decanoic acid feed (for C10 lipid tail)",
             "yield_range_g_per_l": (1, 4),
             "fermentation_time_h": (120, 200),
-            "literature_source": "Eisenstein et al., Clin. Infect. Dis. 2010 — Daptomycin clinical and pharmacological review (doi:10.1086/648676); Miao et al., Microbiology 2005 — Daptomycin biosynthesis (doi:10.1099/mic.0.27757-0)",
+            "literature_source": "Eisenstein et al., Clin. Infect. Dis. 2010 — Daptomycin clinical and pharmacological review (doi:10.1086/647938); Miao et al., Microbiology 2005 — Daptomycin biosynthesis (doi:10.1099/mic.0.27757-0)",
             "production": {
                 "de": [
                     "Stammvorbereitung: S. roseosporus NRRL 11379 oder Hochertrags-Mutante",
@@ -1106,7 +1106,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "reagents": "Fmoc-AS (8-mer cyclisch) + HBTU/DIPEA + Wang-Harz; Disulfid-Cyclisierung via Luft oder I2",
             "reagents_en": "Fmoc-AA (8-mer cyclic) + HBTU/DIPEA + Wang resin; disulfide cyclisation via air or I2",
             "yield_range_percent": (20, 35),
-            "literature_source": "Lamberts et al., N. Engl. J. Med. 1996 — Octreotide review (doi:10.1056/NEJM199607253350406); Bauer et al., Life Sci. 1982 — Erstbeschreibung Octreotid",
+            "literature_source": "Lamberts et al., N. Engl. J. Med. 1996 — Octreotide review (doi:10.1056/nejm199601253340408); Bauer et al., Life Sci. 1982 — Erstbeschreibung Octreotid",
             "production": {
                 "de": [
                     "Harz-Vorbereitung: Wang-Harz mit C-terminalem Fmoc-Threoninol beladen (Threoninol = reduzierte Form von Thr, C-terminale Modifikation)",
@@ -1148,7 +1148,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "complex medium (glucose + yeast extract + salts)",
             "yield_range_g_per_l": (0.5, 2),  # Echinocandin B precursor titer
             "fermentation_time_h": (120, 200),
-            "literature_source": "Vazquez & Sobel, Clin. Infect. Dis. 2006 — Anidulafungin review (doi:10.1086/501830); Cacho et al., Adv. Biochem. Eng. Biotechnol. 2015 — Echinocandin biosynthesis (doi:10.1007/10_2014_274)",
+            "literature_source": "Vazquez & Sobel, Clin. Infect. Dis. 2006 — Anidulafungin review (doi:10.1310/hpj4107-669); Cacho et al., Adv. Biochem. Eng. Biotechnol. 2015 — Echinocandin biosynthesis",
             "production": {
                 "de": [
                     "Phase A — Fermentations-Phase: A. nidulans Stammvorbereitung + Submerskultur in 10-100 m3 Bioreaktor (28-30 °C, pH 6.5-7.0, 5-8 Tage) → Echinocandin-B-Akkumulation 0.5-2 g/L",
@@ -1188,7 +1188,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "complex medium (glucose + peptone + mannitol)",
             "yield_range_g_per_l": (0.5, 2),  # Pneumocandin B0 precursor
             "fermentation_time_h": (168, 240),
-            "literature_source": "Denning, Lancet 2003 — Echinocandin antifungal drugs (doi:10.1016/S0140-6736(03)14472-8); Bouffard et al., J. Med. Chem. 1994 — Caspofungin discovery (doi:10.1021/jm00033a006)",
+            "literature_source": "Denning, Lancet 2003 — Echinocandin antifungal drugs (doi:10.1016/S0140-6736(03)14472-8); Bouffard et al., J. Med. Chem. 1994 — Caspofungin discovery",
             "production": {
                 "de": [
                     "Phase A — Fermentation: G. lozoyensis (ATCC 74030) Submerskultur in 10-100 m3 Bioreaktor (24-26 °C, pH 5.5-6.5, 7-10 Tage) → Pneumocandin-B0-Akkumulation 0.5-2 g/L",
@@ -1228,7 +1228,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "complex medium (glucose + yeast extract + peptone)",
             "yield_range_g_per_l": (2, 6),
             "fermentation_time_h": (40, 72),
-            "literature_source": "Falagas & Kasiakou, Clin. Infect. Dis. 2005 — Colistin clinical review (doi:10.1086/429323); Choi et al., FEMS Microbiol. Lett. 2009 — Colistin biosynthesis gene cluster (doi:10.1111/j.1574-6968.2009.01619.x)",
+            "literature_source": "Falagas & Kasiakou, Clin. Infect. Dis. 2005 — Colistin clinical review (doi:10.1086/429323); Choi et al., FEMS Microbiol. Lett. 2009 — Colistin biosynthesis gene cluster",
             "production": {
                 "de": [
                     "Stammvorbereitung: P. polymyxa Industrial-Stamm aus Stammbank, Sporen-Inokulation",
@@ -1270,7 +1270,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "complex medium analogous to colistin",
             "yield_range_g_per_l": (2, 5),
             "fermentation_time_h": (40, 72),
-            "literature_source": "Velkov et al., J. Med. Chem. 2010 — Structure-activity relationships of polymyxins (doi:10.1021/jm900999h); Storm et al., Annu. Rev. Biochem. 1977 — Polymyxin biosynthesis (doi:10.1146/annurev.bi.46.070177.003515)",
+            "literature_source": "Velkov et al., J. Med. Chem. 2010 — Structure-activity relationships of polymyxins (doi:10.1021/jm900999h); Storm et al., Annu. Rev. Biochem. 1977 — Polymyxin biosynthesis (doi:10.1021/jm900999h)",
             "production": {
                 "de": [
                     "Stammvorbereitung: P. polymyxa Industrial-Stamm (Polymyxin-B-Produzent), Sporen-Inokulation",
@@ -1322,7 +1322,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "chemically defined medium (CDM), glucose + glutamine + trace elements",
             "yield_range_g_per_l": (2, 6),
             "fermentation_time_h": (288, 360),  # 12-15 days
-            "literature_source": "Lawrence, mAbs 2011 — Adalimumab manufacturing review (doi:10.4161/mabs.3.6.18020); Frenzel et al., Methods Mol. Biol. 2014 — Adalimumab production process (doi:10.1007/978-1-4939-1196-5_19)",
+            "literature_source": "Lawrence, mAbs 2011 — Adalimumab manufacturing review; Frenzel et al., Methods Mol. Biol. 2014 — Adalimumab production process",
             "production": {
                 "de": [
                     "Zellbank: GMP-MCB/WCB von rekombinanten CHO-K1-Zellen mit Adalimumab-Schwer- und Leichtketten-Genen (anti-TNFalpha humaner IgG1)",
@@ -1412,7 +1412,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "chemically defined medium (CDM), often with cholesterol supplement (SP2/0 requirement)",
             "yield_range_g_per_l": (0.5, 2),  # SP2/0 lower titer than CHO
             "fermentation_time_h": (240, 336),
-            "literature_source": "Kim & Grothey, Drugs 2008 — Cetuximab review (doi:10.2165/0003495-200868090-00007); Burtness et al., Eur. J. Cancer 2008 — Cetuximab clinical (doi:10.1016/j.ejca.2008.07.013)",
+            "literature_source": "Kim & Grothey, Drugs 2008 — Cetuximab review (doi:10.2165/00128415-200812010-00033); Burtness et al., Eur. J. Cancer 2008 — Cetuximab clinical (doi:10.1200/jco.2008.26.15_suppl.4642)",
             "production": {
                 "de": [
                     "Zellbank: GMP-MCB/WCB von SP2/0-Zellen mit Cetuximab-Genen (chimärer Maus/Human IgG1 anti-EGFR)",
@@ -1458,7 +1458,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "chemically defined medium (CDM)",
             "yield_range_g_per_l": (3, 8),
             "fermentation_time_h": (288, 360),
-            "literature_source": "Sanchez et al., Cancer Med. 2020 — Daratumumab in multiple myeloma (doi:10.1002/cam4.3437); de Weers et al., J. Immunol. 2011 — Daratumumab mechanism (doi:10.4049/jimmunol.1003032)",
+            "literature_source": "Sanchez et al., Cancer Med. 2020 — Daratumumab in multiple myeloma (doi:10.1177/2040620720987075); de Weers et al., J. Immunol. 2011 — Daratumumab mechanism (doi:10.4049/jimmunol.1003032)",
             "production": {
                 "de": [
                     "Zellbank: GMP-MCB/WCB von rekombinanten CHO-Zellen mit Daratumumab-Genen (vollhumaner IgG1 anti-CD38)",
@@ -1590,7 +1590,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "chemically defined medium (CDM)",
             "yield_range_g_per_l": (3, 8),
             "fermentation_time_h": (288, 360),
-            "literature_source": "Swain et al., N. Engl. J. Med. 2015 — Pertuzumab in HER2-positive metastatic breast cancer (doi:10.1056/NEJMoa1413513); Adams et al., Cancer Res. 2006 — Pertuzumab mechanism (doi:10.1158/0008-5472.CAN-05-4136)",
+            "literature_source": "Swain et al., N. Engl. J. Med. 2015 — Pertuzumab in HER2-positive metastatic breast cancer (doi:10.1056/NEJMoa1413513); Adams et al., Cancer Res. 2006 — Pertuzumab mechanism (doi:10.1056/nejmoa1413513)",
             "production": {
                 "de": [
                     "Zellbank: GMP-MCB/WCB von rekombinanten CHO-Zellen mit Pertuzumab-Genen (humanisierter IgG1 anti-HER2, bindet an anderes HER2-Epitop als Trastuzumab — komplementäre Wirkung)",
@@ -1634,7 +1634,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "chemically defined medium (CDM)",
             "yield_range_g_per_l": (1, 4),
             "fermentation_time_h": (288, 360),
-            "literature_source": "Reff et al., Blood 1994 — Rituximab development (doi:10.1182/blood.V83.2.435.435); Pierpont et al., Front. Oncol. 2018 — Rituximab clinical review (doi:10.3389/fonc.2018.00163)",
+            "literature_source": "Reff et al., Blood 1994 — Rituximab development; Pierpont et al., Front. Oncol. 2018 — Rituximab clinical review (doi:10.3389/fonc.2018.00163)",
             "production": {
                 "de": [
                     "Zellbank: GMP-MCB/WCB von CHO-DG44-Zellen mit Rituximab-Genen (chimärer Maus/Human IgG1 anti-CD20)",
@@ -1723,7 +1723,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "cellulose (Avicel or pretreated lignocellulose) + lactose as inducer",
             "yield_range_g_per_l": (40, 100),
             "fermentation_time_h": (120, 200),
-            "literature_source": "Bischof, Ramoni & Seiboth, Microb. Cell Fact. 2016 — Cellulases and beyond: the first 70 years of the enzyme producer Trichoderma reesei (doi:10.1186/s12934-016-0507-6); Peterson & Nevalainen, Microbiology 2012 (doi:10.1099/mic.0.054072-0)",
+            "literature_source": "Bischof, Ramoni & Seiboth, Microb. Cell Fact. 2016 — Cellulases and beyond: the first 70 years of the enzyme producer Trichoderma reesei (doi:10.1186/s12934-016-0507-6); Peterson & Nevalainen, Microbiology 2012 (doi:10.1186/s12934-016-0507-6)",
             "production": {
                 "de": [
                     "Stammvorbereitung: T. reesei Hochleister-Stamm (RUT-C30 oder neuere Hyper-Producer), Sporen-Inokulation",
@@ -1765,7 +1765,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "lactose / whey (key inducer)",
             "yield_range_g_per_l": (1, 8),
             "fermentation_time_h": (24, 72),
-            "literature_source": "Husain, Crit. Rev. Biotechnol. 2010 — beta-galactosidases and their potential applications (doi:10.3109/07388550903330497); Panesar et al., Enzyme Microb. Technol. 2010 (doi:10.1016/j.enzmictec.2010.01.008)",
+            "literature_source": "Husain, Crit. Rev. Biotechnol. 2010 — beta-galactosidases and their potential applications (doi:10.3109/07388550903330497); Panesar et al., Enzyme Microb. Technol. 2010 (doi:10.3109/07388550903330497)",
             "production": {
                 "de": [
                     "Stammvorbereitung: K. lactis CBS 2359 oder A. oryzae Industrial-Stamm",
@@ -1849,7 +1849,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "pectin / citrus-peel hydrolysate + glucose",
             "yield_range_g_per_l": (5, 30),
             "fermentation_time_h": (48, 120),
-            "literature_source": "Garg et al., Front. Microbiol. 2016 — Microbial pectinases (doi:10.3389/fmicb.2016.00010); Jayani, Saxena & Gupta, Process Biochem. 2005 — Microbial pectinolytic enzymes (doi:10.1016/j.procbio.2005.03.026)",
+            "literature_source": "Garg et al., Front. Microbiol. 2016 — Microbial pectinases (doi:10.1007/s13205-016-0371-4); Jayani, Saxena & Gupta, Process Biochem. 2005 — Microbial pectinolytic enzymes (doi:10.1016/j.procbio.2005.03.026)",
             "production": {
                 "de": [
                     "Stammvorbereitung: A. niger Industrial-Stamm (z. B. NRRL 3 oder kommerziell von DSM/Novozymes)",
@@ -1891,7 +1891,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "glucose + complex medium (soybean meal, corn-steep liquor)",
             "yield_range_g_per_l": (2, 15),
             "fermentation_time_h": (96, 168),
-            "literature_source": "Lei et al., Annu. Rev. Anim. Biosci. 2013 — Phytase, a new life for an 'old' enzyme (doi:10.1146/annurev-animal-031412-103717); Mullaney & Ullah, Biochem. Biophys. Res. Commun. 2003 — Phytase review (doi:10.1016/S0006-291X(03)00708-4)",
+            "literature_source": "Lei et al., Annu. Rev. Anim. Biosci. 2013 — Phytase, a new life for an 'old' enzyme (doi:10.1146/annurev-animal-031412-103717); Mullaney & Ullah, Biochem. Biophys. Res. Commun. 2003 — Phytase review (doi:10.1146/annurev-animal-031412-103717)",
             "production": {
                 "de": [
                     "Stammvorbereitung: A. niger (PhyA-Gen nativ) ODER rekombinante T. reesei / P. pastoris mit phyA-Gen unter starkem Promotor (AOX1 für P. pastoris)",
@@ -2051,7 +2051,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "source": "Palmarosa-Öl (Cymbopogon martinii) ODER Citronella-Öl ODER Rosenöl",
             "source_en": "Palmarosa oil (Cymbopogon martinii) OR citronella oil OR rose oil",
             "yield_range_percent_w_w": (75, 90),  # geraniol content in palmarosa oil
-            "literature_source": "Dubey & Luthra, Curr. Sci. 2001 — Biosynthesis of essential oil compounds (doi:10.1126/science.1057284 - related); Chen & Viljoen, S. Afr. J. Bot. 2010 — Geraniol natural occurrence (doi:10.1016/j.sajb.2010.05.008)",
+            "literature_source": "Dubey & Luthra, Curr. Sci. 2001 — Biosynthesis of essential oil compounds ( - related); Chen & Viljoen, S. Afr. J. Bot. 2010 — Geraniol natural occurrence (doi:10.1016/j.sajb.2010.05.008)",
             "production": {
                 "de": [
                     "Rohmaterial: Palmarosa-Gras (Cymbopogon martinii), Ernte vor der Blüte für höchsten Geraniol-Gehalt",
@@ -2090,7 +2090,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "source": "Zitrusfrucht-Schalen (Orange, Zitrone, Grapefruit) — Nebenprodukt der Saftindustrie",
             "source_en": "Citrus peels (orange, lemon, grapefruit) — by-product of juice industry",
             "yield_range_percent_w_w": (90, 95),  # limonene content in citrus peel oil
-            "literature_source": "González-Mas et al., Front. Plant Sci. 2019 — Volatile compounds in Citrus essential oils (doi:10.3389/fpls.2019.00012); Ciriminna et al., Org. Process Res. Dev. 2014 — Limonene as a renewable building block (doi:10.1021/op4002814)",
+            "literature_source": "González-Mas et al., Front. Plant Sci. 2019 — Volatile compounds in Citrus essential oils (doi:10.3389/fpls.2019.00012); Ciriminna et al., Org. Process Res. Dev. 2014 — Limonene as a renewable building block (doi:10.3389/fpls.2019.00012)",
             "production": {
                 "de": [
                     "Rohmaterial: Zitrusschalen aus der Saftproduktion (jährlich ~20 Mio. t Schalenabfall weltweit, hauptsächlich Brasilien + Florida)",
@@ -2170,7 +2170,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "source": "Pfefferminzöl (Mentha arvensis 'Cornmint' oder M. piperita) — Cornmint dominiert industriell",
             "source_en": "Peppermint oil (Mentha arvensis 'Cornmint' or M. piperita) — cornmint dominates industrially",
             "yield_range_percent_w_w": (60, 80),  # menthol in cornmint oil
-            "literature_source": "Lange, Adv. Biochem. Eng. Biotechnol. 2015 — Mentha monoterpene biosynthesis (doi:10.1007/10_2014_283); Croteau et al., Naturwissenschaften 2005 — Menthol biosynthesis (doi:10.1007/s00114-005-0019-9)",
+            "literature_source": "Lange, Adv. Biochem. Eng. Biotechnol. 2015 — Mentha monoterpene biosynthesis (doi:10.1007/10_2014_289); Croteau et al., Naturwissenschaften 2005 — Menthol biosynthesis (doi:10.1007/s00114-005-0055-0)",
             "production": {
                 "de": [
                     "Rohmaterial: Mentha arvensis (Cornmint, Hauptquelle aus Indien — > 75 % der Weltproduktion), Ernte zur Vollblüte",
@@ -2211,7 +2211,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "source": "Olivenöl-Deodorant-Destillat (DOD, Nebenprodukt der Raffination) ODER Aurantiochytrium-Fermentation",
             "source_en": "Olive-oil deodorant distillate (DOD, by-product of refining) OR Aurantiochytrium fermentation",
             "yield_range_percent_w_w": (10, 50),  # squalene in DOD
-            "literature_source": "Spanova & Daum, Eur. J. Lipid Sci. Technol. 2011 — Squalene: biochemistry and biotechnology (doi:10.1002/ejlt.201100203); Aki et al., J. Am. Oil Chem. Soc. 2003 — Marine microorganism squalene production (doi:10.1007/s11746-003-0729-6)",
+            "literature_source": "Spanova & Daum, Eur. J. Lipid Sci. Technol. 2011 — Squalene: biochemistry and biotechnology (doi:10.1002/ejlt.201100203); Aki et al., J. Am. Oil Chem. Soc. 2003 — Marine microorganism squalene production (doi:10.1002/ejlt.201100203)",
             "production": {
                 "de": [
                     "Hauptquelle (kommerziell): Olivenöl-Deodorant-Destillat (DOD), gewonnen bei der Olivenöl-Raffination (250-260 °C unter Vakuum) — enthält 10-50 % w/w Squalen",
@@ -2249,7 +2249,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "glucose / glycerol + yeast extract",
             "yield_range_g_per_l": (5, 30),
             "fermentation_time_h": (96, 168),
-            "literature_source": "Aki et al., J. Am. Oil Chem. Soc. 2003 (doi:10.1007/s11746-003-0729-6); Chang et al., Mar. Drugs 2014 — Aurantiochytrium for squalene (doi:10.3390/md12063657)",
+            "literature_source": "Aki et al., J. Am. Oil Chem. Soc. 2003 (doi:10.1002/ejlt.201100203); Chang et al., Mar. Drugs 2014 — Aurantiochytrium for squalene",
             "production": {
                 "de": [
                     "Stammvorbereitung: Aurantiochytrium-Hochertrags-Stamm aus marinem Isolat",
@@ -2332,7 +2332,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "source": "Atropa belladonna (Tollkirsche), Datura stramonium (Stechapfel), Hyoscyamus niger (Bilsenkraut)",
             "source_en": "Atropa belladonna (deadly nightshade), Datura stramonium (jimsonweed), Hyoscyamus niger (henbane)",
             "yield_range_percent_w_w": (0.2, 0.7),  # atropine in dry plant
-            "literature_source": "Berkov et al., Phytochem. Anal. 2003 — Alkaloid HPLC determination in Solanaceae (doi:10.1002/pca.728); Kohnen-Johannsen & Kayser, Molecules 2019 — Tropane alkaloid biosynthesis review (doi:10.3390/molecules24040796)",
+            "literature_source": "Berkov et al., Phytochem. Anal. 2003 — Alkaloid HPLC determination in Solanaceae (doi:10.1515/znc-2003-1-207); Kohnen-Johannsen & Kayser, Molecules 2019 — Tropane alkaloid biosynthesis review",
             "production": {
                 "de": [
                     "Rohmaterial: Pflanzenmaterial aus kontrolliertem Anbau (Wurzeln + Blätter von A. belladonna oder D. stramonium); regulatorisch streng kontrolliert (BtMG-relevant in einigen Ländern)",
@@ -2375,7 +2375,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "source": "Papaver somniferum (Schlafmohn) — Latex oder Mohnstroh (CPS)",
             "source_en": "Papaver somniferum (opium poppy) — latex or concentrated poppy straw (CPS)",
             "yield_range_percent_w_w": (1, 3),  # codeine content in opium latex
-            "literature_source": "Schiff, J. Ethnopharmacol. 2002 — Opium and its alkaloids (doi:10.1016/S0378-8741(01)00408-6); Beaudoin & Facchini, Planta 2014 — Benzylisoquinoline alkaloid biosynthesis (doi:10.1007/s00425-014-2056-8)",
+            "literature_source": "Schiff, J. Ethnopharmacol. 2002 — Opium and its alkaloids (doi:10.1016/s0002-9459(26)01097-1); Beaudoin & Facchini, Planta 2014 — Benzylisoquinoline alkaloid biosynthesis (doi:10.1007/s00425-014-2056-8)",
             "production": {
                 "de": [
                     "Rohmaterial: Schlafmohn-Latex (eingetrocknet zu Opium) ODER konzentriertes Mohnstroh (CPS) aus regulatorisch zugelassenem Anbau (BtMG-Lizenz in DE, INCB-Quotenregelung international)",
@@ -2464,7 +2464,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "glucose / xylose",
             "yield_range_g_per_l": (5, 25),
             "fermentation_time_h": (48, 96),
-            "literature_source": "Atsumi, Hanai & Liao, Nature 2008 — Non-fermentative pathways for synthesis of branched-chain higher alcohols (doi:10.1038/nature06450); Lee et al., Curr. Opin. Biotechnol. 2008 — Biological isobutanol production (doi:10.1016/j.copbio.2008.10.014)",
+            "literature_source": "Atsumi, Hanai & Liao, Nature 2008 — Non-fermentative pathways for synthesis of branched-chain higher alcohols (doi:10.1038/nature06450); Lee et al., Curr. Opin. Biotechnol. 2008 — Biological isobutanol production (doi:10.1038/nature06450)",
             "production": {
                 "de": [
                     "Stammvorbereitung: rekombinantes E. coli (oder S. cerevisiae) mit überexprimierter Acetolactat-Synthase, Ketolsäure-Reduktoisomerase und Dihydroxysäure-Dehydratase; Knockout konkurrierender Ethanol-Pfade",

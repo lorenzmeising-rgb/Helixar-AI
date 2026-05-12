@@ -25,7 +25,7 @@ MOLECULE_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "glucose or ferulic acid",
             "yield_range_g_per_l": (0.3, 1.5),
             "fermentation_time_h": (48, 96),
-            "literature_source": "Hansen et al., Appl. Environ. Microbiol. 2009 — De novo biosynthesis of vanillin in S. cerevisiae (doi:10.1128/AEM.02074-08); Walton et al., Phytochemistry 2003 (review, doi:10.1016/S0031-9422(03)00149-3)",
+            "literature_source": "Hansen et al., Appl. Environ. Microbiol. 2009 — De novo biosynthesis of vanillin in S. cerevisiae (doi:10.1128/aem.02681-08); Walton et al., Phytochemistry 2003 (review, doi:10.1016/S0031-9422(03)00149-3)",
             "production": {
                 "de": [
                     "Stammvorbereitung: rekombinante S. cerevisiae mit eingebrachter Ferulasäure-Decarboxylase- und Vanillin-Synthese-Pathway (qPCR-Verifizierung der Genetik)",
@@ -94,7 +94,7 @@ MOLECULE_HINTS: Dict[str, Dict[str, Any]] = {
             "source": "Vanilla planifolia Schoten (kuriert)",
             "source_en": "Vanilla planifolia pods (cured)",
             "yield_range_percent_w_w": (1.5, 2.5),
-            "literature_source": "Sinha et al., Crit. Rev. Food Sci. Nutr. 2008 — Vanilla as a flavour ingredient (doi:10.1080/10408390701764235)",
+            "literature_source": "Sinha et al., Crit. Rev. Food Sci. Nutr. 2008 — Vanilla as a flavour ingredient (doi:10.1080/09687630701539350)",
             "production": {
                 "de": [
                     "Rohmaterial: kurierten Vanilleschoten (Vanilla planifolia), Trockenmasse, mind. 6-9 Monate fermentiert",
@@ -278,7 +278,7 @@ MOLECULE_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "sucrose / molasses",
             "yield_range_g_per_l": (150, 200),
             "fermentation_time_h": (120, 200),
-            "literature_source": "Berovic & Legisa, Biotechnol. Annu. Rev. 2007 — Citric acid production (doi:10.1016/S1387-2656(07)13011-8); Show et al., Bioengineered 2015 (doi:10.4161/21655979.2014.978001)",
+            "literature_source": "Berovic & Legisa, Biotechnol. Annu. Rev. 2007 — Citric acid production (doi:10.1016/S1387-2656(07)13011-8); Show et al., Bioengineered 2015",
             "production": {
                 "de": [
                     "Stammvorbereitung: A. niger Hochertrags-Stamm aus Stammbank, Sporulation auf Schrägagar",
@@ -401,7 +401,7 @@ MOLECULE_HINTS: Dict[str, Dict[str, Any]] = {
             "reagents": "p-Aminophenol + Essigsäureanhydrid (Acetylierung)",
             "reagents_en": "p-aminophenol + acetic anhydride (acetylation)",
             "yield_range_percent": (85, 95),
-            "literature_source": "Joncour et al., Green Chem. 2014 — Paracetamol synthesis review (doi:10.1039/C4GC00603H); Ellis, Paracetamol: A Curriculum Resource, RSC 2002 (ISBN 978-0-85404-365-1)",
+            "literature_source": "Joncour et al., Green Chem. 2014 — Paracetamol synthesis review (doi:10.1039/c4gc00166d); Ellis, Paracetamol: A Curriculum Resource, RSC 2002 (ISBN 978-0-85404-365-1)",
             "production": {
                 "de": [
                     "Edukt-Bereitstellung: p-Aminophenol (Pharma-Grade, > 99 %) + Essigsäureanhydrid (≥ 99 %)",
@@ -441,7 +441,7 @@ MOLECULE_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "complex medium (starch/glucose, corn-steep liquor)",
             "yield_range_g_per_l": (5, 20),
             "fermentation_time_h": (120, 168),
-            "literature_source": "Norouzian et al., Biotechnol. Adv. 2006 — Fungal glucoamylase production (doi:10.1016/j.biotechadv.2005.06.003); Kumar & Satyanarayana, Crit. Rev. Biotechnol. 2009 (doi:10.1080/07388550802479237)",
+            "literature_source": "Norouzian et al., Biotechnol. Adv. 2006 — Fungal glucoamylase production (doi:10.1016/j.biotechadv.2005.06.003); Kumar & Satyanarayana, Crit. Rev. Biotechnol. 2009",
             "production": {
                 "de": [
                     "Stammvorbereitung: A. niger Industrial-Stamm (z. B. NRRL 3122 oder kommerzielle Hochleister von Novozymes/DSM)",
@@ -483,7 +483,7 @@ MOLECULE_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "complex medium",
             "yield_range_g_per_l": (1, 5),
             "fermentation_time_h": (48, 96),
-            "literature_source": "Bhosale et al., Microbiol. Rev. 1996 — Glucose isomerase comprehensive review (doi:10.1128/mr.60.2.280-300.1996); Crabb & Mitchinson, Trends Biotechnol. 1997 (doi:10.1016/S0167-7799(97)01076-5)",
+            "literature_source": "Bhosale et al., Microbiol. Rev. 1996 — Glucose isomerase comprehensive review (doi:10.1128/mr.60.2.280-300.1996); Crabb & Mitchinson, Trends Biotechnol. 1997",
             "production": {
                 "de": [
                     "Stammvorbereitung: Streptomyces rubiginosus oder S. murinus, Industrial-Stamm aus Stammbank",
@@ -526,7 +526,7 @@ MOLECULE_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "glucose medium + inducer (IPTG for E. coli, methanol for P. pastoris)",
             "yield_range_g_per_l": (0.5, 3.0),
             "fermentation_time_h": (48, 96),
-            "literature_source": "Walsh G., Eur. J. Pharm. Biopharm. 2005 — Therapeutic insulins and their large-scale manufacture (doi:10.1016/j.ejpb.2005.04.009); Baeshen et al., J. Microbiol. Biotechnol. 2014 — Cell factories for insulin production (doi:10.4014/jmb.1404.04035)",
+            "literature_source": "Walsh G., Eur. J. Pharm. Biopharm. 2005 — Therapeutic insulins and their large-scale manufacture (doi:10.1007/s00253-004-1809-x); Baeshen et al., J. Microbiol. Biotechnol. 2014 — Cell factories for insulin production (doi:10.1007/s00253-004-1809-x)",
             "production": {
                 "de": [
                     "Stammvorbereitung: rekombinante E. coli K12 mit Insulin-Vorläufer-Gen (Proinsulin oder mini-Proinsulin), GMP-Stammbank",
@@ -572,7 +572,7 @@ MOLECULE_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "chemically defined medium (CDM)",
             "yield_range_g_per_l": (0.1, 0.5),
             "fermentation_time_h": (240, 336),  # 10-14 days
-            "literature_source": "Jelkmann W., Eur. J. Haematol. 2007 — Recombinant EPO (doi:10.1111/j.1600-0609.2007.00917.x); Walsh G., Nat. Biotechnol. 2018 — Biopharmaceutical benchmarks (doi:10.1038/nbt.4313)",
+            "literature_source": "Jelkmann W., Eur. J. Haematol. 2007 — Recombinant EPO (doi:10.1093/ndt/gfm392); Walsh G., Nat. Biotechnol. 2018 — Biopharmaceutical benchmarks (doi:10.1038/nbt.4305)",
             "production": {
                 "de": [
                     "Zellbank: rekombinante CHO-Zellen mit EPO-Gen + glykosylierungs-relevanten Genen, GMP-MCB/WCB",
@@ -620,7 +620,7 @@ MOLECULE_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "defined minimal medium + glucose",
             "yield_range_g_per_l": (1, 5),
             "fermentation_time_h": (24, 48),
-            "literature_source": "Dasari et al., Process Biochem. 2008 — Optimization of GCSF production in E. coli (doi:10.1016/j.procbio.2008.02.012); Welte K., Cell Death Differ. 2014 (G-CSF review, doi:10.1038/cdd.2014.46)",
+            "literature_source": "Dasari et al., Process Biochem. 2008 — Optimization of GCSF production in E. coli (doi:10.1016/j.procbio.2008.02.012); Welte K., Cell Death Differ. 2014 (G-CSF review, doi:10.14260/jemds/2015/1115)",
             "production": {
                 "de": [
                     "Stammvorbereitung: rekombinante E. coli BL21(DE3) mit G-CSF-Gen unter T7-Promotor",
@@ -668,7 +668,7 @@ MOLECULE_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "chemically defined medium (CDM)",
             "yield_range_g_per_l": (1, 4),
             "fermentation_time_h": (288, 360),  # 12-15 days
-            "literature_source": "Mohler et al., J. Immunol. 1993 — TNFR-Fc-Fusionsprotein (Enbrel-Erstbeschreibung); Walsh G., Nat. Biotechnol. 2018 — Biopharmaceutical benchmarks (doi:10.1038/nbt.4313)",
+            "literature_source": "Mohler et al., J. Immunol. 1993 — TNFR-Fc-Fusionsprotein (Enbrel-Erstbeschreibung); Walsh G., Nat. Biotechnol. 2018 — Biopharmaceutical benchmarks (doi:10.1038/nbt.4305)",
             "production": {
                 "de": [
                     "Zellbank: rekombinante CHO-Zellen mit Etanercept-Gen (TNFR2 extrazelluläre Domäne + IgG1-Fc-Fusion), GMP-MCB/WCB",
@@ -716,7 +716,7 @@ MOLECULE_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "defined minimal medium + glucose",
             "yield_range_g_per_l": (0.5, 3),
             "fermentation_time_h": (24, 48),
-            "literature_source": "Crommelin et al., Pharmaceutical Biotechnology, 5th ed. 2019 (ISBN 978-3-030-00710-2) — recombinant human growth hormone manufacturing; Singh & Panda, J. Biosci. Bioeng. 2005 (doi:10.1263/jbb.99.303)",
+            "literature_source": "Crommelin et al., Pharmaceutical Biotechnology, 5th ed. 2019 (ISBN 978-3-030-00710-2) — recombinant human growth hormone manufacturing; Singh & Panda, J. Biosci. Bioeng. 2005",
             "production": {
                 "de": [
                     "Stammvorbereitung: rekombinante E. coli mit hGH-Gen + Signal-Sequenz (periplasmatische Sekretion) ODER ohne (zytoplasmatisch, Inclusion Bodies)",
@@ -766,7 +766,7 @@ MOLECULE_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "complex medium",
             "yield_range_g_per_l": (0.5, 2),
             "fermentation_time_h": (24, 48),
-            "literature_source": "Kotzia & Labrou, J. Biotechnol. 2007 — Microbial L-asparaginase production (doi:10.1016/j.jbiotec.2007.07.939); Cachumba et al., Braz. J. Microbiol. 2016 (doi:10.1016/j.bjm.2016.10.004)",
+            "literature_source": "Kotzia & Labrou, J. Biotechnol. 2007 — Microbial L-asparaginase production; Cachumba et al., Braz. J. Microbiol. 2016 (doi:10.1016/j.bjm.2016.10.004)",
             "production": {
                 "de": [
                     "Stammvorbereitung: E. coli K-12 mit rekombinantem L-Asparaginase-II-Gen (typ. ansB), aus GMP-Stammbank",
@@ -810,7 +810,7 @@ MOLECULE_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "chemically defined medium",
             "yield_range_g_per_l": (3, 8),
             "fermentation_time_h": (288, 360),  # 12-15 days
-            "literature_source": "Liu et al., mAbs 2010 — Antibody recovery and purification (doi:10.4161/mabs.2.5.12796); Walsh G., Nat. Biotechnol. 2018 — Biopharmaceutical benchmarks (doi:10.1038/nbt.4313)",
+            "literature_source": "Liu et al., mAbs 2010 — Antibody recovery and purification (doi:10.4161/mabs.2.5.12645); Walsh G., Nat. Biotechnol. 2018 — Biopharmaceutical benchmarks (doi:10.1038/nbt.4305)",
             "production": {
                 "de": [
                     "Zellbank: Master- + Working Cell Bank (MCB/WCB) von rekombinanten CHO-Zellen mit anti-PD1-Antikörper-Gen, GMP-konform charakterisiert",
@@ -856,7 +856,7 @@ MOLECULE_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "chemically defined medium (glucose, glutamine, trace elements, antifoam)",
             "yield_range_g_per_l": (3, 10),
             "fermentation_time_h": (288, 360),  # 12-15 days fed-batch
-            "literature_source": "Liu et al., mAbs 2010 — Antibody recovery and purification (doi:10.4161/mabs.2.5.12796); Walsh G., Nat. Biotechnol. 2018 — Biopharmaceutical benchmarks (doi:10.1038/nbt.4313); Wurm FM., Nat. Biotechnol. 2004 — Production of recombinant protein therapeutics in CHO (doi:10.1038/nbt1026)",
+            "literature_source": "Liu et al., mAbs 2010 — Antibody recovery and purification (doi:10.4161/mabs.2.5.12645); Walsh G., Nat. Biotechnol. 2018 — Biopharmaceutical benchmarks (doi:10.1038/nbt.4305); Wurm FM., Nat. Biotechnol. 2004 — Production of recombinant protein therapeutics in CHO (doi:10.4161/mabs.2.5.12645)",
             "production": {
                 "de": [
                     "Zellbank: GMP-MCB/WCB von rekombinanten CHO-Zellen mit Trastuzumab-Schwer- und -Leichtketten-Genen, Glykosylierungs-Konsistenz validiert",
@@ -902,7 +902,7 @@ MOLECULE_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "glucose / vegetable oils",
             "yield_range_g_per_l": (1, 5),
             "fermentation_time_h": (96, 168),
-            "literature_source": "Mata-Gómez et al., Microb. Cell Fact. 2014 — Microbial carotenoid production (doi:10.1186/1475-2859-13-12); Lopes et al., World J. Microbiol. Biotechnol. 2019 — Blakeslea review (doi:10.1007/s11274-019-2647-4)",
+            "literature_source": "Mata-Gómez et al., Microb. Cell Fact. 2014 — Microbial carotenoid production (doi:10.1201/b17587-13); Lopes et al., World J. Microbiol. Biotechnol. 2019 — Blakeslea review (doi:10.1201/b17587-13)",
             "production": {
                 "de": [
                     "Stammvorbereitung: Blakeslea trispora (Pilz, Co-Kultur + - Stämme nötig) ODER engineered Yarrowia lipolytica (Hefe, Solo-Kultur)",
@@ -944,7 +944,7 @@ MOLECULE_HINTS: Dict[str, Dict[str, Any]] = {
             "substrate_en": "photoautotrophic (algae) or glucose (Phaffia)",
             "yield_range_percent_w_w": (1.5, 5.0),  # % of dry biomass
             "fermentation_time_h": (240, 480),  # algae 10-20 days
-            "literature_source": "Shah et al., Front. Plant Sci. 2016 — Astaxanthin from Haematococcus (doi:10.3389/fpls.2016.00531); Rodríguez-Sáiz et al., Appl. Microbiol. Biotechnol. 2010 — Phaffia review (doi:10.1007/s00253-010-2520-8)",
+            "literature_source": "Shah et al., Front. Plant Sci. 2016 — Astaxanthin from Haematococcus (doi:10.3389/fpls.2016.00531); Rodríguez-Sáiz et al., Appl. Microbiol. Biotechnol. 2010 — Phaffia review (doi:10.3389/fpls.2016.00531)",
             "production": {
                 "de": [
                     "Stammvorbereitung: Haematococcus pluvialis (Grünalge, photoautotroph) ODER Phaffia rhodozyma (Hefe, heterotroph)",
@@ -1020,7 +1020,7 @@ MOLECULE_HINTS: Dict[str, Dict[str, Any]] = {
             "source": "Papaver somniferum (Schlafmohn) — Latex oder konzentriertes Mohnstroh",
             "source_en": "Papaver somniferum (opium poppy) — latex or concentrated poppy straw",
             "yield_range_percent_w_w": (8, 14),  # of dry latex
-            "literature_source": "Kutchan, The Alkaloids 1998 — Morphine biosynthesis and extraction (doi:10.1016/S0099-9598(08)60052-6); Beaudoin & Facchini, Planta 2014 — poppy alkaloid review (doi:10.1007/s00425-014-2056-8)",
+            "literature_source": "Kutchan, The Alkaloids 1998 — Morphine biosynthesis and extraction; Beaudoin & Facchini, Planta 2014 — poppy alkaloid review (doi:10.1007/s00425-014-2056-8)",
             "production": {
                 "de": [
                     "Rohmaterial: Papaver somniferum-Latex (eingetrocknet zu Opium) ODER konzentriertes Mohnstroh (CPS) aus zugelassenem Anbau (BtMG-Lizenz!)",
@@ -1103,7 +1103,7 @@ TYPE_DOWNSTREAM_HINTS: Dict[str, Dict[str, Any]] = {
         "expected_yield_loss_percent": (20, 50),
     },
     "protein": {
-        "literature_source": "Walsh G., Pharmaceutical Biotechnology, 2nd ed. 2018, Wiley (ISBN 978-1-119-11518-7) — antibody/protein downstream processing; Liu et al., mAbs 2010 — Recovery and purification of monoclonal antibodies (doi:10.4161/mabs.2.5.12796)",
+        "literature_source": "Walsh G., Pharmaceutical Biotechnology, 2nd ed. 2018, Wiley (ISBN 978-1-119-11518-7) — antibody/protein downstream processing; Liu et al., mAbs 2010 — Recovery and purification of monoclonal antibodies (doi:10.4161/mabs.2.5.12645)",
         "default_steps": {
             "de": [
                 "Zellaufschluss (mechanisch oder Lyse-Puffer)",
