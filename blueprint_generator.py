@@ -87,11 +87,20 @@ def generate_production_blueprint(
       - alternatives: list of alternative strategies with lower confidence
       - metadata: original decision_score, source_reference, compound_class
     """
+    # Bug N3 fix: propagate production_steps / steps fields from the
+    # selected strategy into the blueprint.recommended so downstream
+    # consumers (audit lint, future export formats) see the actual route
+    # rather than an empty array.
     rec = {
         "microorganism": selected_strategy.get("microorganism"),
         "strain": selected_strategy.get("strain"),
         "compound_class": selected_strategy.get("compound_class"),
         "compound_name": selected_strategy.get("compound_name"),
+        "production_steps": (
+            selected_strategy.get("production_steps")
+            or selected_strategy.get("steps")
+            or []
+        ),
     }
 
     temp_range = selected_strategy.get("temperature_range")
@@ -116,12 +125,16 @@ def generate_production_blueprint(
 
     # Risk notes: concise, actionable
     risk_notes: List[str] = []
+    # Bug M5 fix: only surface confidence-related lines as a RISK when the
+    # confidence is actually low/moderate. "High confidence — suitable for
+    # pilot studies" is a positive statement, not a risk, and was confusing
+    # users when it appeared as the first bullet of the "Wichtige Risiken"
+    # section.
     if confidence < 0.4:
         risk_notes.append("Low confidence in reported performance — expect high variability and additional validation.")
     elif confidence < 0.7:
         risk_notes.append("Moderate confidence — plan small-scale validation before scale-up.")
-    else:
-        risk_notes.append("High confidence — suitable for pilot studies with standard QA/QC.")
+    # high confidence (>= 0.7): no risk-note added.
 
     if reported_yield is None:
         risk_notes.append("No quantitative yield reported in DB — treat yield projections as uncertain.")
@@ -130,8 +143,26 @@ def generate_production_blueprint(
         if conservative_yield is not None and reported_yield > 0 and conservative_yield / reported_yield < 0.8:
             risk_notes.append("Conservative yield significantly lower than reported; investigate scale-up risks.")
 
+    # Bug M6 fix: previously this warning fired whenever the DB row had no
+    # `temperature_range` / `ph_range` / `oxygen_level` field — but for
+    # process_input-driven runs (where the route comes from MOLECULE_HINTS
+    # and the conditions live in the per-step strings, not the legacy DB
+    # columns), this warning is a false positive. Only fire when no
+    # conditions can be derived from EITHER the legacy DB columns OR the
+    # per-step text.
     if temp_range is None and ph_range is None and oxygen is None:
-        risk_notes.append("No operating parameters available; recommend literature review and lab data collection.")
+        # Check whether any step in the recommendation already carries
+        # temperature / pH / time info — if yes, suppress the warning.
+        any_step_has_conditions = False
+        for step_text in (rec.get("production_steps") or rec.get("steps") or []):
+            if not isinstance(step_text, str):
+                continue
+            t = step_text.lower()
+            if any(token in t for token in ("°c", " °c", " ph ", "ph ", " h,", "ph=", "ph:", "min,", "min ", "rpm")):
+                any_step_has_conditions = True
+                break
+        if not any_step_has_conditions:
+            risk_notes.append("No operating parameters available; recommend literature review and lab data collection.")
 
     # Alternatives: use DB if available
     alternatives: List[Dict[str, Any]] = []

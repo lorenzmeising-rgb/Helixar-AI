@@ -474,7 +474,12 @@ TRANSLATIONS = {
     "pdf_efficiency": {"de": "Effizienz", "en": "Efficiency"},
     "pdf_cost": {"de": "Kosten", "en": "Cost"},
     "pdf_risk": {"de": "Risiko", "en": "Risk"},
-    "pdf_toxicity": {"de": "Toxizität", "en": "Toxicity"},
+    # Bug M2 fix: row aggregates intrinsic toxicity AND process containment
+    # / QC requirements (endotoxin spec, controlled-substance handling).
+    # The previous "Toxizität" label was misread as PRODUCT toxicity for
+    # Met-enkephalin / Liraglutide where the driver is actually
+    # endotoxin/QC.
+    "pdf_toxicity": {"de": "Stoff- & QC-Risiko", "en": "Substance & QC risk"},
     "pdf_confidence": {"de": "Confidence Level", "en": "Confidence level"},
     "pdf_key_issues": {"de": "Wichtige Themen", "en": "Key issues"},
     "pdf_recommended_improvements": {"de": "Empfohlene Verbesserungen", "en": "Recommended improvements"},
@@ -531,6 +536,13 @@ TRANSLATIONS = {
     "pdf_tradeoff_default_2": {
         "de": "Effizienz vs. Komplexität: Mehr Prozessschritte erhöhen Risiko und reduzieren Nettoeffizienz.",
         "en": "Efficiency vs. complexity: more process steps increase risk and reduce net efficiency.",
+    },
+    # Bug M3 fix: replaced four generic fallback bullets with one honest
+    # "no specific optimisations yet" line. Generic bullets undercut the
+    # rule-driven optimisations elsewhere in the report.
+    "pdf_no_specific_optimizations": {
+        "de": "Für dieses Molekül liegen aktuell keine modul-spezifischen Optimierungsempfehlungen vor. Ein manuelles CMC-Audit auf Basis der Prozessparameter wird empfohlen.",
+        "en": "No module-specific optimisation recommendations are available for this molecule yet. A manual CMC audit based on the process parameters is recommended.",
     },
     "pdf_fallback_action_1": {
         "de": "Bewerten Sie alternative Syntheserouten zur Reduktion der Schrittanzahl und Komplexität.",

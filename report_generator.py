@@ -6,6 +6,58 @@ from language_de import LABELS
 from molecules_db import get_smiles_for as _get_smiles_for
 
 
+# Bug H2 fix: ReportLab's default Helvetica only supports WinAnsi/CP1252.
+# Latin Extended-A characters like 'ń' (U+0144) render as '■' (U+25A0).
+# Pre-transliterate problematic characters to their nearest ASCII/Latin-1
+# equivalent so author names like "Celińska" are rendered as "Celinska"
+# instead of "Celi■ska".
+_PDF_UNICODE_MAP = {
+    # Polish / Czech / Slovak Latin Extended-A
+    "ą": "a", "Ą": "A", "ć": "c", "Ć": "C", "ę": "e", "Ę": "E",
+    "ł": "l", "Ł": "L", "ń": "n", "Ń": "N", "ó": "o", "Ó": "O",
+    "ś": "s", "Ś": "S", "ź": "z", "Ź": "Z", "ż": "z", "Ż": "Z",
+    "č": "c", "Č": "C", "ď": "d", "Ď": "D", "ě": "e", "Ě": "E",
+    "ň": "n", "Ň": "N", "ř": "r", "Ř": "R", "š": "s", "Š": "S",
+    "ť": "t", "Ť": "T", "ů": "u", "Ů": "U", "ž": "z", "Ž": "Z",
+    # Turkish / Romanian
+    "ş": "s", "Ş": "S", "ț": "t", "Ț": "T", "ğ": "g", "Ğ": "G",
+    "ı": "i", "İ": "I",
+    # Hungarian
+    "ő": "o", "Ő": "O", "ű": "u", "Ű": "U",
+    # Math / typography that may sneak in
+    "≈": "~", "≤": "<=", "≥": ">=", "≠": "!=",
+    "·": "-",
+    # Greek letters that occasionally appear in chem nomenclature
+    "α": "alpha", "β": "beta", "γ": "gamma", "δ": "delta",
+    "Α": "Alpha", "Β": "Beta", "Γ": "Gamma", "Δ": "Delta",
+    "μ": "u",  # often "mikro" in unit context
+}
+
+
+def _to_pdf_safe(text: Any) -> str:
+    """Transliterate Latin-Extended-A and other non-CP1252 chars so they
+    don't render as '■' in ReportLab's default Helvetica."""
+    if text is None:
+        return ""
+    s = str(text)
+    if not any(ord(c) > 127 for c in s):
+        return s  # fast path
+    out = []
+    for c in s:
+        if ord(c) <= 127:
+            out.append(c)
+            continue
+        # already safe in CP1252?
+        try:
+            c.encode("cp1252")
+            out.append(c)
+            continue
+        except UnicodeEncodeError:
+            pass
+        out.append(_PDF_UNICODE_MAP.get(c, "?"))
+    return "".join(out)
+
+
 def _safe_val(val: Optional[Any]) -> str:
     """Safe display for values in German.
 
@@ -165,12 +217,16 @@ def export_report_pdf(
         return _t(key, lang=lang)
 
     def TE(text):
-        """Translate dynamic engine output text to the active language."""
-        return translate_engine_text(text, lang=lang)
+        """Translate dynamic engine output text to the active language.
+
+        Also sanitises Latin-Extended-A characters (Bug H2 fix) so author
+        names like 'Celińska' no longer render as 'Celi■ska' in the PDF.
+        """
+        return _to_pdf_safe(translate_engine_text(text, lang=lang))
 
     def TV(value):
         """Translate qualitative value labels (HIGH / LOW / MEDIUM)."""
-        return translate_engine_value(value, lang=lang)
+        return _to_pdf_safe(translate_engine_value(value, lang=lang))
     try:
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.units import mm
@@ -653,9 +709,12 @@ def export_report_pdf(
 
     elems.append(Paragraph(L("pdf_key_issues"), styles["Section"]))
     # Engine-produced issues are in English; translate inline.
+    # Bug N4 fix: surface only the TOP issues (1–3) here, not the full
+    # list. Otherwise this section duplicates the later "Wichtige Risiken"
+    # section verbatim (seen on Caffeine and other PDFs).
     issues = analysis.get('issues', []) or []
     if issues:
-        for it in issues[:4]:
+        for it in issues[:3]:
             prob, why = _explain_issue_pair(it)
             # Translate the (possibly English) engine output before display.
             elems.append(Paragraph(f"• {TE(prob)}", normal))
@@ -1114,12 +1173,16 @@ def export_report_pdf(
                 elems.append(Paragraph(f"<b>{L('pdf_effort')}:</b> {eff_label}", normal))
             elems.append(Spacer(1, 6))
     else:
-        # Fallback to generic actions if no rule-based actions matched.
-        for idx, key in enumerate(
-            ("pdf_fallback_action_1", "pdf_fallback_action_2", "pdf_fallback_action_3", "pdf_fallback_action_4"),
-            start=1,
-        ):
-            elems.append(Paragraph(f"{idx}. {L(key)}", normal))
+        # Bug M3 fix: previously rendered four generic bullets ("Bewerten
+        # Sie alternative Syntheserouten…", etc.). That undercut the value
+        # of the modules that DID have concrete optimisations elsewhere in
+        # the report. We now surface a single explicit "no recommendations
+        # for this molecule yet" line that's clearly distinguishable from
+        # the rule-driven block.
+        elems.append(Paragraph(
+            L("pdf_no_specific_optimizations"),
+            normal,
+        ))
 
     elems.append(Spacer(1, 12))
     elems.append(Paragraph(f"{L('pdf_confidence')}: {TV(conf_label)}", styles["BodySmall"]))
@@ -1160,7 +1223,9 @@ def export_report_pdf(
         elems.append(Paragraph(L("references_intro"), normal))
         elems.append(Spacer(1, 6))
         for idx, src in enumerate(aggregated_sources, start=1):
-            elems.append(Paragraph(f"[{idx}] {src}", normal))
+            # Bug H2: sanitise Latin-Extended-A so author names like
+            # 'Celińska' don't render as 'Celi■ska' under Helvetica.
+            elems.append(Paragraph(f"[{idx}] {_to_pdf_safe(src)}", normal))
             elems.append(Spacer(1, 3))
 
     # ----- Final page: Important Notices (legal / IP / liability / sources) -----
