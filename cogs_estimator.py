@@ -266,6 +266,55 @@ def _raw_material_multiplier(eur_per_kg: Optional[float],
 # Public entry point
 # ----------------------------------------------------------------------
 
+# Bug H8 fix: per-molecule overrides for cases where the (type, subtype, method)
+# tuple gives a misleading range. Sources cited in production.
+#
+# Format: molecule_name (lowercase, normalised) -> (low €/kg, high €/kg,
+#         anchor_de, anchor_en, breakdown_dict_or_None)
+_MOLECULE_COGS_OVERRIDES: Dict[str, Dict[str, Any]] = {
+    # Caffeine: USP/Ph.Eur. bulk-synthetic caffeine from China/India is
+    # commercially priced at 8–25 €/kg (FOB list prices 2024–2025). The
+    # generic alkaloid_chemical anchor (50–600 €/kg) is set for rare
+    # alkaloids like Morphine/Codeine and over-estimates Caffeine by
+    # 1–2 orders of magnitude.
+    # Source: Maier, Ullmann's Encyclopedia of Industrial Chemistry, 7th
+    # ed., Wiley-VCH 2011 — Purines and Caffeine
+    # (doi:10.1002/14356007.a07_513.pub2).
+    "caffeine": {
+        "base_low": 8.0, "base_high": 30.0,
+        "breakdown": {"rm": 0.50, "dsp": 0.25, "opex": 0.20, "capex": 0.05},
+        "anchor_de": "Synthese-Caffeine (USP/Ph.Eur. Bulk, kommerziell etabliert)",
+        "anchor_en": "synthetic caffeine (USP/Ph.Eur. bulk, commercially established)",
+    },
+    # Linalool: world-commodity (~30.000 t/a) priced at 10–30 €/kg in bulk
+    # (BASF/Symrise Citral-based semi-synthetic route). The generic
+    # terpene anchor (extraction or biotech) over-estimates by 5–50×.
+    # Source: BASF/Symrise public price benchmarks 2023; Bauer, Garbe,
+    # Surburg, Common Fragrance and Flavor Materials, 5th ed., Wiley-VCH
+    # 2006 (ISBN 978-3-527-31150-9).
+    "linalool": {
+        "base_low": 10.0, "base_high": 50.0,
+        "breakdown": {"rm": 0.55, "dsp": 0.15, "opex": 0.25, "capex": 0.05},
+        "anchor_de": "Linalool Welt-Commodity (Citral-basiert semi-synthetisch)",
+        "anchor_en": "linalool world commodity (citral-based semi-synthetic)",
+    },
+    # Liraglutide: full SPPS for a 30-mer + γ-Glu-C16 lipidation is at
+    # the high end of peptide COGS, around 50–500 k€/kg API for classic
+    # SPPS and 10–50 k€/kg for semi-synthetic (recombinant backbone +
+    # chemical acylation). The default peptide/linear/chemical anchor
+    # (500–8000 €/kg) is correct for short peptides but 1–2 orders of
+    # magnitude too low here.
+    # Source: Knudsen et al., J. Med. Chem. 2000 (doi:10.1021/jm9909645);
+    # Bray BL., Nat. Rev. Drug Discov. 2003 (doi:10.1038/nrd1133).
+    "liraglutide": {
+        "base_low": 50000.0, "base_high": 500000.0,
+        "breakdown": {"rm": 0.40, "dsp": 0.40, "opex": 0.15, "capex": 0.05},
+        "anchor_de": "GLP-1-Analogon (30-mer + C16-Lipidierung, SPPS)",
+        "anchor_en": "GLP-1 analogue (30-mer + C16 lipidation, SPPS)",
+    },
+}
+
+
 def estimate_cogs(process_input: Dict[str, Any]) -> Dict[str, Any]:
     """Estimate COGS in €/kg for the given process inputs.
 
@@ -277,8 +326,13 @@ def estimate_cogs(process_input: Dict[str, Any]) -> Dict[str, Any]:
     mtype = str(process_input.get("molecule_type") or "").lower().strip()
     msub = str(process_input.get("molecule_subtype") or "").lower().strip()
     method = _normalize_method(process_input.get("method"))
+    mname = str(process_input.get("molecule_name") or "").lower().strip()
 
-    anchor = _ANCHORS.get((mtype, msub, method))
+    # Per-molecule override takes precedence over the generic cluster
+    # (Bug H8 fix: avoids misleading ranges for outlier molecules).
+    anchor = _MOLECULE_COGS_OVERRIDES.get(mname)
+    if anchor is None:
+        anchor = _ANCHORS.get((mtype, msub, method))
     confidence = "high"
     fallback_note_de: Optional[str] = None
     fallback_note_en: Optional[str] = None

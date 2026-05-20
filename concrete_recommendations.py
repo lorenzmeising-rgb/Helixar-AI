@@ -979,6 +979,45 @@ MOLECULE_HINTS: Dict[str, Dict[str, Any]] = {
         },
     },
     "caffeine": {
+        "chemical": {
+            "route": "Traube-Synthese aus Dimethylharnstoff + Cyanessigsäure",
+            "route_en": "Traube synthesis from dimethylurea + cyanoacetic acid",
+            "yield_range_percent": (60, 75),
+            "literature_source": "Traube, Ber. Dtsch. Chem. Ges. 1900, 33 (3), 3035–3056 (doi:10.1002/cber.19000330354); Maier, Ullmann's Encyclopedia of Industrial Chemistry, 7th ed., Wiley-VCH 2011 — Purines and Caffeine (doi:10.1002/14356007.a07_513.pub2)",
+            "production": {
+                "de": [
+                    "Schritt 1 — Kondensation: N,N'-Dimethylharnstoff + Cyanessigsäure → Cyanacetyl-Dimethylharnstoff (Essigsäureanhydrid als Wasserabspalter, 80 °C, 2–4 h)",
+                    "Schritt 2 — Cyclisierung: Ringschluss zum 4-Amino-1,3-dimethyl-uracil (NaOH wässrig, 90 °C, 1 h)",
+                    "Schritt 3 — Nitrosierung: HNO2 (NaNO2/HCl, 0–5 °C) → 4-Amino-5-nitroso-1,3-dimethyl-uracil",
+                    "Schritt 4 — Reduktion: Na2S2O4 oder katalytische Hydrierung (Pd/C, H2, 25 °C) → 4,5-Diamino-1,3-dimethyl-uracil",
+                    "Schritt 5 — Imidazolring-Schluss: Ameisensäure (HCOOH, Reflux 100 °C, 2 h) → Theophyllin",
+                    "Schritt 6 — N7-Methylierung: Dimethylsulfat oder Methyliodid in NaOH/Wasser, 60 °C → Coffein-Rohprodukt",
+                ],
+                "en": [
+                    "Step 1 — Condensation: N,N'-dimethylurea + cyanoacetic acid → cyanoacetyl-dimethylurea (acetic anhydride as water scavenger, 80 °C, 2–4 h)",
+                    "Step 2 — Cyclization: ring closure to 4-amino-1,3-dimethyl-uracil (aqueous NaOH, 90 °C, 1 h)",
+                    "Step 3 — Nitrosation: HNO2 (NaNO2/HCl, 0–5 °C) → 4-amino-5-nitroso-1,3-dimethyl-uracil",
+                    "Step 4 — Reduction: Na2S2O4 or catalytic hydrogenation (Pd/C, H2, 25 °C) → 4,5-diamino-1,3-dimethyl-uracil",
+                    "Step 5 — Imidazole ring closure: formic acid (HCOOH, reflux 100 °C, 2 h) → theophylline",
+                    "Step 6 — N7-methylation: dimethyl sulfate or methyl iodide in NaOH / water, 60 °C → crude caffeine",
+                ],
+            },
+            "downstream": {
+                "de": [
+                    "Heisswasser-Umkristallisation (≈ 80 °C → langsames Abkühlen auf 5 °C; Caffeine-Löslichkeit fällt von 660 auf 22 g/L)",
+                    "Aktivkohle-Behandlung zur Entfernung gefärbter Nebenprodukte",
+                    "Sublimation bei 178 °C/Vakuum für USP/Ph.Eur.-Reinheit (optional)",
+                    "Trocknung bei 80 °C im Vakuum bis Restfeuchte < 0,5 %",
+                ],
+                "en": [
+                    "Hot-water recrystallization (~ 80 °C → slow cooling to 5 °C; caffeine solubility drops from 660 to 22 g/L)",
+                    "Activated-carbon treatment to remove coloured by-products",
+                    "Sublimation at 178 °C / vacuum for USP / Ph.Eur. grade (optional)",
+                    "Drying at 80 °C under vacuum to residual moisture < 0.5 %",
+                ],
+            },
+            "expected_purity_after_workup": "≥ 99,5 % (USP / Ph. Eur.)",
+        },
         "extraction": {
             "source": "Tee-/Kaffeebohnen-Entkoffeinierung (Nebenprodukt)",
             "source_en": "tea / coffee-bean decaffeination (by-product)",

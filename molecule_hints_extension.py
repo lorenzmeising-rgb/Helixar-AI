@@ -565,7 +565,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "reagents": "Fmoc-Aminosäuren (Tyr, Gly, Phe, Met) + HBTU/DIPEA + 2-Chlortrityl-Harz",
             "reagents_en": "Fmoc-amino acids (Tyr, Gly, Phe, Met) + HBTU/DIPEA + 2-chlorotrityl resin",
             "yield_range_percent": (55, 70),
-            "literature_source": "Hughes et al., Nature 1975 — Identification of methionine- and leucine-enkephalin; Albericio, Curr. Opin. Chem. Biol. 2004",
+            "literature_source": "Hughes et al., Nature 1975, 258 (5536), 577–580 — Identification of two related pentapeptides from the brain with potent opiate agonist activity (doi:10.1038/258577a0); Merrifield, J. Am. Chem. Soc. 1963 — Solid Phase Peptide Synthesis I. The synthesis of a tetrapeptide (doi:10.1021/ja00897a025); Albericio, Curr. Opin. Chem. Biol. 2004, 8 (3), 211–221 — Developments in peptide and amide synthesis (doi:10.1016/j.cbpa.2004.03.002)",
             "production": {
                 "de": [
                     "Harz-Vorbereitung: 2-Chlortrityl-Chlorid-Harz mit C-terminalem Fmoc-Met beladen",
@@ -722,7 +722,7 @@ EXTENSION_HINTS: Dict[str, Dict[str, Any]] = {
             "reagents": "Fmoc-AS für 32-mer Lachs-Calcitonin + HBTU/DIPEA + Rink-Amid-Harz (C-Term-Amid)",
             "reagents_en": "Fmoc-AA for 32-mer salmon calcitonin + HBTU/DIPEA + Rink amide resin (C-term amide)",
             "yield_range_percent": (15, 30),
-            "literature_source": "Guidobono, Curr. Pharm. Des. 2002 — Salmon calcitonin clinical use; Munson et al., J. Bone Miner. Res. 1995 — Salmon calcitonin therapeutics",
+            "literature_source": "Guidobono, Curr. Pharm. Des. 2002, 8 (24), 2113–2129 — Pharmacological actions of salmon calcitonin (doi:10.2174/1381612023393170); Munson et al., J. Bone Miner. Res. 1995 — Salmon calcitonin therapeutics (doi:10.1002/jbmr.5650100212); Chan & White, Fmoc Solid Phase Peptide Synthesis: A Practical Approach, Oxford Univ. Press 2000 (ISBN 978-0-19-963724-9)",
             "production": {
                 "de": [
                     "Harz-Vorbereitung: Rink-Amid-Harz (für C-terminales Amid) mit Fmoc-Pro als erster AS beladen",
