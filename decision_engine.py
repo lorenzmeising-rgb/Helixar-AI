@@ -53,6 +53,60 @@ class DecisionEngine:
             return pd.Series([0.5] * len(s), index=s.index)
         return ((numeric - mn) / (mx - mn)).fillna(0.0)
 
+    @staticmethod
+    def _resolve_scale_label(p: Dict[str, Any]) -> str:
+        """Robust scale-label resolution.
+
+        Priority:
+          1. p['scale'] if explicitly given as 'lab' / 'pilot' / 'industrial'
+          2. derived from p['scale_kg_per_year'] when numeric
+
+        Returns one of 'lab', 'pilot', 'industrial'. Falls back to 'pilot' for
+        unknown numeric values rather than 'lab', because 'lab' was the silent
+        default that previously caused all scales to be treated identically.
+        """
+        explicit = p.get("scale")
+        if isinstance(explicit, str) and explicit.strip():
+            v = explicit.strip().lower()
+            if v in ("lab", "pilot", "industrial"):
+                return v
+        kg = p.get("scale_kg_per_year")
+        try:
+            if kg is None:
+                return "pilot"  # sane default rather than the previous silent "lab"
+            kgf = float(kg)
+            if kgf >= 1000.0:
+                return "industrial"
+            if kgf >= 1.0:
+                return "pilot"
+            return "lab"
+        except (TypeError, ValueError):
+            return "pilot"
+
+    @staticmethod
+    def _scale_intensity(p: Dict[str, Any]) -> float:
+        """Fine-grained scale intensity on a [0, 1] axis, log-scaled across
+        kg/year from 1e-3 to 1e6.
+
+        Used to differentiate cost/risk within the same coarse scale-label
+        ('industrial' at 5000 vs 500000 kg/yr should NOT produce identical
+        scores). Returns 0.0 for missing data so existing callers don't change.
+        """
+        kg = p.get("scale_kg_per_year")
+        try:
+            if kg is None:
+                return 0.0
+            kgf = float(kg)
+            if kgf <= 0:
+                return 0.0
+            import math as _m
+            # log10(1e-3)=-3, log10(1e6)=6 → span 9 orders of magnitude
+            log_kg = _m.log10(kgf)
+            normalized = (log_kg - (-3.0)) / (6.0 - (-3.0))
+            return max(0.0, min(1.0, normalized))
+        except (TypeError, ValueError):
+            return 0.0
+
     def _apply_filters(self, df: pd.DataFrame, target_constraints: Dict[str, Any]) -> pd.DataFrame:
         """Apply optional pre-scoring filters based on target_constraints.
 
@@ -238,7 +292,8 @@ class DecisionEngine:
             steps = int(p.get("number_of_steps") or 0)
             method = str(p.get("method") or "").lower()
             desired_purity = str(p.get("desired_purity") or "standard").lower()
-            scale = str(p.get("scale") or "lab").lower()
+            scale = self._resolve_scale_label(p)
+            scale_intensity = self._scale_intensity(p)
             raw_cost = str(p.get("raw_material_cost") or "medium").lower()
             raw_avail = str(p.get("raw_material_availability") or "medium").lower()
             strict_waste = bool(p.get("strict_waste_constraints"))
@@ -272,6 +327,14 @@ class DecisionEngine:
             if scale == "industrial":
                 delta_process_cost += 3 * w_process
                 delta_process_risk += 3 * w_process
+            elif scale == "pilot":
+                delta_process_cost += 1.5 * w_process
+                delta_process_risk += 1.5 * w_process
+            # Fine-grained scale intensity (0..1, log-scaled across
+            # 1e-3..1e6 kg/year). Adds smooth contribution within categories.
+            if scale_intensity > 0:
+                delta_process_cost += 2.0 * scale_intensity * w_process
+                delta_process_risk += 1.5 * scale_intensity * w_process
             if method in ("chemical", "chem", "chemical synthesis"):
                 delta_process_cost += 2 * w_process
             if method in ("biotechnological", "biotech", "biotechnological synthesis"):
@@ -584,10 +647,96 @@ class DecisionEngine:
         This forwards to the existing recommend(...) path which detects
         process-like inputs and returns a single synthetic strategy containing
         an 'analysis' dict. Returns the same list structure as recommend.
+
+        Bug H4 fix: applies input validation (clamps, escalations) and
+        records issues so the user sees what was corrected and which
+        inputs raised the risk profile.
         """
+        # ---- Input validation / normalisation ----
+        input_validation_issues: List[str] = []
+        if isinstance(process_input, dict):
+            pi = process_input  # mutate in place — callers typically pass a fresh dict
+            # 1. scale_kg_per_year must be ≥ 0
+            kg = pi.get("scale_kg_per_year")
+            if kg is not None:
+                try:
+                    kgf = float(kg)
+                    if kgf < 0:
+                        input_validation_issues.append(
+                            f"Negative Skala ({kg} kg/Jahr) erkannt – auf 0 normalisiert."
+                        )
+                        pi["scale_kg_per_year"] = 0.0
+                except (TypeError, ValueError):
+                    input_validation_issues.append(
+                        f"Skala-Eingabe konnte nicht als Zahl gelesen werden ({kg!r})."
+                    )
+                    pi["scale_kg_per_year"] = None
+            # 2. desired_purity_percent must be in (0, 100]
+            pct = pi.get("desired_purity_percent")
+            if pct is not None:
+                try:
+                    pf = float(pct)
+                    if pf > 100:
+                        input_validation_issues.append(
+                            f"Reinheit > 100 % erkannt ({pct} %) – auf 100 % begrenzt."
+                        )
+                        pi["desired_purity_percent"] = 100.0
+                    elif pf < 0:
+                        input_validation_issues.append(
+                            f"Negative Reinheit erkannt ({pct} %) – auf 0 % normalisiert."
+                        )
+                        pi["desired_purity_percent"] = 0.0
+                except (TypeError, ValueError):
+                    pass
+            # 3. number_of_steps ≥ 1 (0 makes no physical sense)
+            ns = pi.get("number_of_steps")
+            if ns is not None:
+                try:
+                    nsi = int(ns)
+                    if nsi < 1:
+                        input_validation_issues.append(
+                            f"Schrittzahl < 1 erkannt ({ns}) – auf 1 normalisiert."
+                        )
+                        pi["number_of_steps"] = 1
+                except (TypeError, ValueError):
+                    pass
+            # 4. num_qualified_suppliers ≥ 1 OR escalate risk
+            ns_supp = pi.get("num_qualified_suppliers")
+            if ns_supp is not None:
+                try:
+                    sup = int(ns_supp)
+                    if sup <= 0:
+                        input_validation_issues.append(
+                            "0 qualifizierte Lieferanten – Single-Source-Risiko: "
+                            "Verfügbarkeit auf 'low' eskaliert."
+                        )
+                        # Force availability to 'low' so the engine bumps risk
+                        pi["raw_material_availability"] = "low"
+                except (TypeError, ValueError):
+                    pass
+            # 5. lead_time_weeks ≥ 0
+            lt = pi.get("lead_time_weeks")
+            if lt is not None:
+                try:
+                    if float(lt) < 0:
+                        input_validation_issues.append(
+                            f"Negative Lieferzeit ({lt} Wochen) – auf 0 normalisiert."
+                        )
+                        pi["lead_time_weeks"] = 0.0
+                except (TypeError, ValueError):
+                    pass
+
         try:
             # Prefer direct analyzeProcess implementation if available
             analysis = self.analyzeProcess(process_input)
+            # Surface input-validation issues in the analysis output so the
+            # user can see what was corrected.
+            if input_validation_issues and isinstance(analysis, dict):
+                existing = analysis.get("issues") or []
+                analysis["issues"] = list(existing) + [
+                    f"Eingabe-Validierung: {msg}" for msg in input_validation_issues
+                ]
+                analysis["input_validation_issues"] = input_validation_issues
             # Wrap into the same list structure as recommend (selected strategy)
             selected = {
                 "microorganism": process_input.get("method") or "process",
@@ -892,7 +1041,8 @@ class DecisionEngine:
                 steps = 0
             method = str(p.get("method") or "").lower()
             desired_purity = str(p.get("desired_purity") or "standard").lower()
-            scale = str(p.get("scale") or "lab").lower()
+            scale = self._resolve_scale_label(p)
+            scale_intensity = self._scale_intensity(p)
             raw_avail = str(p.get("raw_material_availability") or "medium").lower()
             raw_cost = str(p.get("raw_material_cost") or "medium").lower()
             strict_waste = bool(p.get("strict_waste_constraints"))
@@ -1018,9 +1168,31 @@ class DecisionEngine:
             efficiencyScore = 10  # start high, reduce with problems
 
             # BASE INPUT EFFECTS
-            # Number of steps
+            # Number of steps (Bug M1 fix: graduated effect across the full
+            # range — previously >5 steps gave a flat penalty so 10, 50 and
+            # 100-step SPPS-like routes scored identically. Now each band
+            # adds proportional cost/risk so long sequences are flagged.)
             try:
-                if steps > 5:
+                if steps > 30:
+                    # SPPS-very-long / multi-stage natural-product synthesis
+                    costScore += 7
+                    riskScore += 5
+                    efficiencyScore -= 5
+                    if "Very long synthesis (>30 steps) compounds operational complexity exponentially" not in issues:
+                        issues.append("Very long synthesis (>30 steps) compounds operational complexity exponentially")
+                elif steps > 20:
+                    costScore += 5
+                    riskScore += 4
+                    efficiencyScore -= 4
+                    if "High number of synthesis steps increases cost and complexity" not in issues:
+                        issues.append("High number of synthesis steps increases cost and complexity")
+                elif steps > 10:
+                    costScore += 4
+                    riskScore += 3
+                    efficiencyScore -= 4
+                    if "High number of synthesis steps increases cost and complexity" not in issues:
+                        issues.append("High number of synthesis steps increases cost and complexity")
+                elif steps > 5:
                     costScore += 3
                     riskScore += 2
                     efficiencyScore -= 3
@@ -1044,16 +1216,31 @@ class DecisionEngine:
             except Exception:
                 pass
 
-            # Scale
+            # Scale (coarse label + fine-grained intensity bonus)
+            # Bug K1 fix: previously p.get("scale") returned None for callers
+            # that only set scale_kg_per_year (numeric) → engine silently
+            # treated every molecule as 'lab'. Now resolved through
+            # _resolve_scale_label, and scale_intensity adds a smooth
+            # contribution within categories so 5000 vs 500000 kg/yr no
+            # longer produce identical scores.
             try:
                 if scale == "industrial":
                     costScore += 3
                     riskScore += 3
                 elif scale == "pilot":
+                    costScore += 1
                     riskScore += 1
                 elif scale == "lab":
                     # small risk reduction for lab
                     riskScore = max(0, riskScore - 1)
+                # fine-grained intensity bonus (capped contribution)
+                if scale_intensity > 0:
+                    costScore += int(round(2.0 * scale_intensity))
+                    riskScore += int(round(1.5 * scale_intensity))
+                    # very large scales reduce per-unit efficiency
+                    # (utility-bound, logistics, supply-chain)
+                    if scale_intensity > 0.75:
+                        efficiencyScore -= 1
             except Exception:
                 pass
 
@@ -2564,15 +2751,136 @@ class DecisionEngine:
             except Exception:
                 pass
 
+            # K3 fix: Rebuild score_breakdown from observable inputs. The
+            # legacy try/except block (lines ~1361-1475) was unreachable due
+            # to a historical mis-indent, so score_breakdown / risk_breakdown
+            # were always zero dicts. This block reconstructs them from the
+            # same inputs the main scoring uses, giving a transparent
+            # contribution map per category.
+            try:
+                _comp_map = {"low": 1, "medium": 2, "high": 3, "very high": 4}
+                _stab_map = {"high": 1, "medium": 2, "low": 3}
+                _w_smiles = self._get_smiles_weight_static(molecule_type) if hasattr(self, "_get_smiles_weight_static") else 0.5
+                _w_process, _w_economic, _w_downstream = 1.0, 1.2, 1.1
+                _w_biophysical = 1.3 if molecule_type in ("protein", "peptide") else 0.0
+
+                _comp_num = _comp_map.get(properties.get("complexity", "medium"), 2)
+                _instab_num = _stab_map.get(properties.get("stability", "medium"), 2)
+
+                # SMILES contribution
+                _sm_cost = _comp_num * _w_smiles
+                _sm_risk = _instab_num * _w_smiles
+                if (properties.get("base_toxicity") == "high"
+                        or properties.get("toxicity") == "high"):
+                    _sm_cost += 2 * _w_smiles
+                    _sm_risk += 2 * _w_smiles
+                if properties.get("complexity") == "high":
+                    _sm_cost += 2 * _w_smiles
+
+                # Process contribution (steps + scale + method)
+                _pr_cost = float(steps) * 1.2 * _w_process
+                _pr_risk = 0.0
+                if scale == "industrial":
+                    _pr_cost += 3 * _w_process
+                    _pr_risk += 3 * _w_process
+                elif scale == "pilot":
+                    _pr_cost += 1.5 * _w_process
+                    _pr_risk += 1.5 * _w_process
+                if scale_intensity > 0:
+                    _pr_cost += 2.0 * scale_intensity * _w_process
+                    _pr_risk += 1.5 * scale_intensity * _w_process
+                if method in ("chemical", "chem", "chemical synthesis"):
+                    _pr_cost += 2 * _w_process
+                if method in ("biotechnological", "biotech", "biotechnological synthesis"):
+                    _pr_risk += 2 * _w_process
+                if method in ("extraction", "extract", "extraction-based"):
+                    _pr_risk += 1 * _w_process
+
+                # Economic contribution (raw materials, waste)
+                _ec_cost = 0.0
+                _ec_risk = 0.0
+                if raw_cost == "high":
+                    _ec_cost += 4 * _w_economic
+                if raw_avail == "low":
+                    _ec_risk += 3 * _w_economic
+                if strict_waste:
+                    _ec_cost += 2 * _w_economic
+                    _ec_risk += 1 * _w_economic
+
+                # Downstream contribution (purification, purity, subtype)
+                _dn_cost = 0.0
+                _dn_risk = 0.0
+                if properties.get("purification_difficulty") in ("high", "very high"):
+                    _dn_cost += 3 * _w_downstream
+                if desired_purity in (">99%", "very high"):
+                    _dn_cost += 3 * _w_downstream
+                    _dn_risk += 2 * _w_downstream
+                _stype = (p.get("molecule_subtype") or "").lower()
+                if _stype == "antibody":
+                    _dn_cost += 4
+                    _dn_risk += 3
+
+                # Biophysical contribution (only for biomolecules)
+                _bi_cost = 0.0
+                _bi_risk = 0.0
+                if _w_biophysical > 0:
+                    _agg = str(p.get("aggregation_risk") or "").lower()
+                    _fold = str(p.get("folding_complexity") or "").lower()
+                    _bst = str(p.get("biophysical_stability") or "").lower()
+                    if _agg == "high":
+                        _bi_risk += 4 * _w_biophysical
+                        _bi_cost += 2 * _w_biophysical
+                    if _fold == "high":
+                        _bi_risk += 3 * _w_biophysical
+                    if _bst == "low":
+                        _bi_risk += 4 * _w_biophysical
+                        _bi_cost += 2 * _w_biophysical
+                    # Baseline for peptide/protein (matches the existing
+                    # bump downstream in this function)
+                    if molecule_type == "peptide":
+                        _bi_risk += 2
+                    if molecule_type == "protein":
+                        _bi_risk += 3
+
+                score_breakdown = {
+                    "smiles":      round(_sm_cost, 3),
+                    "process":     round(_pr_cost, 3),
+                    "economic":    round(_ec_cost, 3),
+                    "downstream":  round(_dn_cost, 3),
+                    "biophysical": round(_bi_cost, 3),
+                }
+                risk_breakdown = {
+                    "smiles":      round(_sm_risk, 3),
+                    "process":     round(_pr_risk, 3),
+                    "economic":    round(_ec_risk, 3),
+                    "downstream":  round(_dn_risk, 3),
+                    "biophysical": round(_bi_risk, 3),
+                }
+                weighting_explanation = (
+                    f"weights: smiles={_w_smiles}, process={_w_process}, "
+                    f"economic={_w_economic}, downstream={_w_downstream}, "
+                    f"biophysical={_w_biophysical}"
+                )
+            except Exception:
+                score_breakdown = {"smiles": 0.0, "process": 0.0, "economic": 0.0, "downstream": 0.0, "biophysical": 0.0}
+                risk_breakdown = {"smiles": 0.0, "process": 0.0, "economic": 0.0, "downstream": 0.0, "biophysical": 0.0}
+
+            # Bug N2 fix: keep both camelCase and snake_case for backwards
+            # compatibility (downstream consumers may use either form),
+            # but mark the snake_case form as canonical going forward.
             analysis = {
                 "efficiency": efficiency,
                 "efficiency_score": eff_score_map.get(efficiency, 0.5),
                 "cost": cost,
-                "costLevel": cost,
-                "costScore": costScore,
+                "cost_level": cost,           # canonical (snake_case)
+                "costLevel": cost,            # legacy (camelCase) — kept for compat
+                "cost_score_raw": costScore,  # canonical
+                "costScore": costScore,       # legacy
                 "cost_score": cost_score_map.get(cost, 0.5),
-                "costDrivers": costDrivers,
-                "savingsPotential": savingsPotential,
+                "cost_drivers": costDrivers,  # canonical
+                "costDrivers": costDrivers,   # legacy
+                "savings_potential": savingsPotential,  # canonical
+                "savingsPotential": savingsPotential,   # legacy
                 "risk": risk,
                 "toxicity": toxicity,
                 "final_toxicity": toxicity,
