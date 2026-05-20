@@ -324,6 +324,15 @@ def _biophysical_warnings(p: Dict[str, Any], lang: str) -> List[str]:
     if mtype not in ("peptide", "protein"):
         return warnings
 
+    # Bug M4 fix: cyclic peptides (Cyclosporine class) have no tertiary
+    # fold, so Tm and Tagg are conceptually not meaningful. Skip Tm/Tagg
+    # plausibility checks for them — otherwise placeholder values lead
+    # to self-contradictory warnings ("Tm < Tagg" for inputs the user
+    # never explicitly meant to compare).
+    if mtype == "peptide" and msub == "cyclic":
+        # Only run the disulfide / PTM checks below, not the Tm/Tagg.
+        return warnings
+
     tm = p.get("tm_celsius")
     tagg = p.get("tagg_celsius")
     disulfides = p.get("num_disulfides")
@@ -423,6 +432,37 @@ def _purity_method_warnings(p: Dict[str, Any], lang: str) -> List[str]:
         high_purity = (p.get("desired_purity") or "").lower() in (">99%", "very high")
         purity_str = "> 99 %"
     if high_purity:
+        # Bug H6 fix: the "needs prep-HPLC / FPLC / recrystallization" warning
+        # was previously fired pauschal. For some subtypes the de-facto
+        # purification path is something else entirely:
+        #   - small_molecule/volatile  → distillation
+        #   - protein/antibody         → Protein-A + IEX + virus filtration
+        #   - protein/enzyme           → UF/DF + IEX
+        # Suppress the warning for those subtypes when the realistic
+        # purification stack is available.
+        mtype = (p.get("molecule_type") or "").lower()
+        msub = (p.get("molecule_subtype") or "").lower()
+
+        # Volatiles: distillation is the standard path → suppress
+        if msub == "volatile" or mtype == "small_molecule" and msub == "volatile":
+            return warnings
+
+        # Antibodies: Protein-A + IEX + virus filtration is the standard.
+        # If FPLC or membrane filtration is available (proxy for that stack),
+        # or has_advanced_purification flag is set, suppress.
+        if msub == "antibody":
+            if (methods.get("has_fplc")
+                    or methods.get("has_membrane_filtration")
+                    or p.get("has_advanced_purification")):
+                return warnings
+
+        # Enzymes: UF/DF + IEX standard. Same proxy as antibody.
+        if msub == "enzyme":
+            if (methods.get("has_membrane_filtration")
+                    or methods.get("has_fplc")
+                    or p.get("has_advanced_purification")):
+                return warnings
+
         if not (methods.get("has_prep_hplc") or methods.get("has_fplc") or methods.get("has_crystallization")):
             warnings.append(_m("high_purity_no_method", lang, purity_str=purity_str))
     return warnings

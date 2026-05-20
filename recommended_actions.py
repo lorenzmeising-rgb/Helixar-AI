@@ -662,8 +662,61 @@ def _rule_biophys_low_tagg(p: Dict[str, Any], lang: str) -> List[Dict[str, Any]]
                   current_state=cur, optimized_state=opt, tagg=float(tagg))]
 
 
+_EUKARYOTIC_HOSTS = {
+    "cho", "cho-k1", "cho-s", "cho-dg44",
+    "hek", "hek293", "hek-293",
+    "yeast", "s. cerevisiae", "saccharomyces", "p. pastoris", "pichia",
+    "k. lactis", "kluyveromyces",
+    "a. oryzae", "aspergillus", "t. inflatum", "tolypocladium",
+    "sf9", "sf21", "insect", "baculovirus",
+    "eukaryotic", "eukaryotisch", "eukaryotischer wirt",
+}
+
+_BACTERIAL_HOSTS = {
+    "e. coli", "ecoli", "escherichia",
+    "b. subtilis", "bacillus",
+    "c. glutamicum", "corynebacterium",
+    "bacteria", "bakteriell", "bacterial",
+    "prokaryotic", "prokaryotisch",
+}
+
+
+def _expression_host_known_eukaryotic(p: Dict[str, Any]) -> bool:
+    """True when the process_input explicitly or implicitly indicates a
+    eukaryotic host. Used to suppress refolding/PTM optimization rules
+    that don't apply to eukaryotic systems."""
+    host_fields = [
+        p.get("expression_system"),
+        p.get("host"),
+        p.get("expression_host"),
+        (p.get("selected_route") or {}).get("host") if isinstance(p.get("selected_route"), dict) else None,
+    ]
+    for h in host_fields:
+        if not h:
+            continue
+        if str(h).strip().lower() in _EUKARYOTIC_HOSTS:
+            return True
+    # Heuristic: for biotech-produced antibodies the de-facto host is CHO,
+    # so the refolding/PTM rules are not applicable. Only fall back to
+    # this if no explicit bacterial host is set.
+    msub = (p.get("molecule_subtype") or "").lower()
+    method = (p.get("method") or "").lower()
+    if msub == "antibody" and method in ("biotechnological", "biotech", "biotechnological synthesis"):
+        # check that user did not explicitly pick bacterial
+        for h in host_fields:
+            if h and str(h).strip().lower() in _BACTERIAL_HOSTS:
+                return False
+        return True
+    return False
+
+
 def _rule_biophys_multi_domain(p: Dict[str, Any], lang: str) -> List[Dict[str, Any]]:
-    """Refolding strategy when many domains and/or disulfides."""
+    """Refolding strategy when many domains and/or disulfides.
+
+    Bug K5 fix: suppress this recommendation when the host is already
+    eukaryotic (CHO, HEK, yeast, …) — then refolding from inclusion bodies
+    is not the production reality and the suggestion would be nonsensical.
+    """
     domains = p.get("num_domains")
     disulfides = p.get("num_disulfides")
     mtype = (p.get("molecule_type") or "").lower()
@@ -672,6 +725,8 @@ def _rule_biophys_multi_domain(p: Dict[str, Any], lang: str) -> List[Dict[str, A
     if not (isinstance(domains, int) and isinstance(disulfides, int)):
         return []
     if domains < 3 and disulfides < 4:
+        return []
+    if _expression_host_known_eukaryotic(p):
         return []
     if lang == "en":
         cur = f"{domains} domains, {disulfides} disulfides — high folding complexity, E. coli inclusion bodies typically < 10 % correctly folded"
@@ -685,10 +740,17 @@ def _rule_biophys_multi_domain(p: Dict[str, Any], lang: str) -> List[Dict[str, A
 
 
 def _rule_biophys_ptm(p: Dict[str, Any], lang: str) -> List[Dict[str, Any]]:
-    """Eukaryotic host required when PTMs are needed."""
+    """Eukaryotic host required when PTMs are needed.
+
+    Bug K5 fix: suppress this rule when the host is already eukaryotic
+    (CHO, HEK, yeast). In that case PTMs are performed correctly and
+    the suggestion would contradict the already-chosen route.
+    """
     ptm = p.get("has_ptm")
     mtype = (p.get("molecule_type") or "").lower()
     if mtype != "protein" or not ptm:
+        return []
+    if _expression_host_known_eukaryotic(p):
         return []
     if lang == "en":
         cur = "Post-translational modifications required, but no eukaryotic expression system specified (E. coli cannot perform PTMs)"
@@ -705,23 +767,44 @@ def _rule_biophys_ptm(p: Dict[str, Any], lang: str) -> List[Dict[str, Any]]:
 # ---------------------------------------------------------------------------
 
 def _rule_switch_chem_to_biotech(p: Dict[str, Any], lang: str) -> List[Dict[str, Any]]:
+    """Suggest fermentative alternative for molecules where industrial
+    biotech production is genuinely established.
+
+    Bug H5 fix: previously the rule fired for the entire
+    `molecule_type == "natural_product"` category, which falsely suggested
+    fermentation for compounds like Caffeine, Morphine, Codeine, Atropine,
+    Quinine — none of which has an industrially-established fermentative
+    route on relevant scale. We now use an explicit whitelist of molecules
+    with documented commercial fermentation programmes.
+    """
     out: List[Dict[str, Any]] = []
     if (p.get("method") or "").lower() != "chemical":
         return out
-    mtype = (p.get("molecule_type") or "").lower()
-    msub = (p.get("molecule_subtype") or "").lower()
-    if mtype == "natural_product" or msub == "terpene" or (p.get("molecule_name") or "").lower() in {
-        "vanillin", "linalool", "citral", "limonene", "geraniol", "ethanol", "glutathione"
-    }:
-        mname = p.get("molecule_name") or ""
-        if lang == "en":
-            cur = f"Chemical synthesis for {mname} — typically requires toxic/halogenated solvents, lower scale-up flexibility"
-            opt = "Fermentative route via engineered yeast / E. coli: 60–90 % less halogenated solvent use, comparable or higher yield with optimized strain, 6–18 months time-to-market for strain optimization"
-        else:
-            cur = f"Chemische Synthese für {mname} — erfordert typ. toxische/halogenierte Lösungsmittel, geringere Skalierbarkeit"
-            opt = "Fermentative Route via engineered Hefe / E. coli: 60–90 % weniger halogenierte Lösungsmittel, bei optimierten Stämmen vergleichbarer oder höherer Yield, Time-to-Market 6–18 Monate für Stammoptimierung"
-        out.append(_make("switch_chem_to_biotech", lang, effort="high",
-                         current_state=cur, optimized_state=opt))
+    mname = (p.get("molecule_name") or "").lower()
+    # Whitelist of molecules with documented industrial fermentation programmes
+    # (commercial or late-stage demonstration). Adding others requires evidence
+    # of at least pilot-scale fermentation with literature citation.
+    biotech_whitelist = {
+        "vanillin",        # Borregaard, Evolva — yeast/ferulic acid
+        "artemisinin",     # Amyris/Sanofi, engineered S. cerevisiae
+        "citric acid", "lactic acid", "succinic acid", "itaconic acid",
+        "ethanol", "butanol", "isobutanol", "2,3-butanediol",
+        "ethyl lactate", "diacetyl",
+        "glutathione",     # Kohjin / Tanabe — yeast
+        "linalool", "limonene", "geraniol",  # engineered yeast (pilot scale)
+        "β-carotene", "astaxanthin",  # Phaffia rhodozyma, X. dendrorhous
+        "squalene",        # yeast platform
+    }
+    if mname not in biotech_whitelist:
+        return out
+    if lang == "en":
+        cur = f"Chemical synthesis for {p.get('molecule_name') or mname} — typically requires toxic/halogenated solvents, lower scale-up flexibility"
+        opt = "Fermentative route via engineered yeast / E. coli: 60–90 % less halogenated solvent use, comparable or higher yield with optimized strain, 6–18 months time-to-market for strain optimization"
+    else:
+        cur = f"Chemische Synthese für {p.get('molecule_name') or mname} — erfordert typ. toxische/halogenierte Lösungsmittel, geringere Skalierbarkeit"
+        opt = "Fermentative Route via engineered Hefe / E. coli: 60–90 % weniger halogenierte Lösungsmittel, bei optimierten Stämmen vergleichbarer oder höherer Yield, Time-to-Market 6–18 Monate für Stammoptimierung"
+    out.append(_make("switch_chem_to_biotech", lang, effort="high",
+                     current_state=cur, optimized_state=opt))
     return out
 
 

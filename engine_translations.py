@@ -292,6 +292,21 @@ _PHRASE_RULES = [
     (r"^Chemical Process$", r"Chemischer Prozess"),
     (r"^Additional adjustments based on recognized process class$",
      r"Zusätzliche Anpassungen basierend auf erkannter Prozessklasse"),
+
+    # ---- Bug H7 i18n fix: English engine strings flagged by deep audit ----
+    (r"^Distillation likely feasible due to volatility; consider azeotrope management and reflux optimization\.?$",
+     r"Destillation aufgrund der Flüchtigkeit gut machbar — Azeotrop-Management und Rückfluss-Optimierung berücksichtigen"),
+    (r"^Extraction processes (?:may have|is likely to have) low yield and high variability\.?$",
+     r"Extraktionsprozesse haben oft niedrige Ausbeute und hohe Variabilität"),
+    (r"^Reducing steps may impact yield or product quality and requires route redesign\.?$",
+     r"Schrittreduktion kann Ausbeute oder Produktqualität beeinträchtigen und erfordert ein Route-Redesign"),
+    (r"^Protein downstreams require chromatography-based capture and polishing; ensure robust column regeneration and buffer systems\.?$",
+     r"Protein-Aufarbeitung erfordert chromatographisches Capture und Polishing — robuste Säulen-Regeneration und Puffer-Systeme sicherstellen"),
+    (r"^For large biomolecules, structural representation has limited predictive power compared to biophysical behavior\.?$",
+     r"Für große Biomoleküle hat die strukturelle Darstellung begrenzte Vorhersagekraft gegenüber dem biophysikalischen Verhalten"),
+    # extra defensive variants (subject-verb mismatch seen in audit: "processes is")
+    (r"^Extraction processes is likely to have low yield and high variability\.?$",
+     r"Extraktionsprozesse haben oft niedrige Ausbeute und hohe Variabilität"),
 ]
 
 
