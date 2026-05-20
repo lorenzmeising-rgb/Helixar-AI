@@ -23,4 +23,7 @@ custom_molecule.py
 env/
 sensitivity_analysis.py
 test_outputs/
+audit_outputs/
+docs/doi_repair_proposals.csv
+docs/sources_validation.csv
 venv/
