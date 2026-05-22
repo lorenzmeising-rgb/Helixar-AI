@@ -574,29 +574,89 @@ def export_report_pdf(
         return "Standardroute, robuste Prozessparameter" if lang == "de" else "standard route, robust parameters"
 
     def _brief_cost(v: str) -> str:
-        if msub_ctx == "antibody":
-            return "Protein-A-Affinität + CHO-Zellkultur" if lang == "de" else "protein-A capture + CHO culture"
-        if isinstance(eur_kg, (int, float)) and float(eur_kg) >= 500:
-            return f"Rohstoffe ≈ {float(eur_kg):.0f} €/kg dominiert" if lang == "de" else f"raw material ≈ {float(eur_kg):.0f} €/kg dominates"
+        """Short cost rationale shown next to the cost level.
+
+        Bug B2 fix: previously this method returned subtype-specific
+        rationales (e.g. "Multistep-Synthese (5 Schritte)") regardless of
+        the actual cost category, so reports like "Kosten NIEDRIG (2/10)
+        — Multistep-Synthese" had an internal contradiction. Now we
+        BRANCH ON THE CATEGORY FIRST and pick a rationale that is
+        consistent with whether the cost is low / medium / high /
+        very high.
+        """
+        v_norm = str(v).lower()
+        is_low = v_norm in ("low", "niedrig")
+        is_high = v_norm in ("high", "hoch", "very high", "very_high", "sehr hoch")
+
+        # ---- LOW-cost rationales ----
+        if is_low:
+            if mtype_ctx == "small_molecule" and msub_ctx == "volatile":
+                return ("Bulk-Fermentation, günstige Edukte, destillative Aufarbeitung"
+                        if lang == "de"
+                        else "bulk fermentation, cheap feedstock, distillation workup")
+            if mtype_ctx == "protein" and msub_ctx == "enzyme":
+                return ("Industrieenzym-Bulk, UF/DF-Standard-DSP"
+                        if lang == "de"
+                        else "industrial-enzyme bulk, UF/DF standard DSP")
+            if mtype_ctx == "natural_product" and method_ctx in ("extraction", "extract"):
+                return ("etablierte Extraktionsroute, Commodity-Pflanzenmaterial"
+                        if lang == "de"
+                        else "established extraction route, commodity plant material")
+            return ("günstige Rohstoffe, Standard-Aufarbeitung, niedrige Komplexität"
+                    if lang == "de"
+                    else "cheap raw materials, standard workup, low complexity")
+
+        # ---- HIGH / VERY HIGH cost rationales ----
+        if is_high:
+            if msub_ctx == "antibody":
+                return ("Protein-A-Affinität + CHO-Zellkultur"
+                        if lang == "de"
+                        else "protein-A capture + CHO culture")
+            if isinstance(eur_kg, (int, float)) and float(eur_kg) >= 500:
+                return (f"Rohstoffe ≈ {float(eur_kg):.0f} €/kg dominiert"
+                        if lang == "de"
+                        else f"raw material ≈ {float(eur_kg):.0f} €/kg dominates")
+            if mtype_ctx == "peptide" and method_ctx == "chemical" and isinstance(steps_ctx, int) and steps_ctx >= 15:
+                return (f"SPPS-Synthese ({steps_ctx} Kupplungen), Reagenz-intensiv"
+                        if lang == "de"
+                        else f"SPPS synthesis ({steps_ctx} couplings), reagent-intensive")
+            if mtype_ctx == "peptide" and method_ctx in ("biotechnological", "biotech"):
+                return ("NRPS-Fermentation + Multi-Step-Chromatographie"
+                        if lang == "de"
+                        else "NRPS fermentation + multi-step chromatography")
+            if mtype_ctx == "protein":
+                return ("Fermentation + komplexe Chromatographie-Sequenz"
+                        if lang == "de"
+                        else "fermentation + complex chromatography sequence")
+            if mtype_ctx == "natural_product" and method_ctx in ("extraction", "extract") \
+                    and pur_diff == "very high":
+                return ("komplexes Naturstoff-Gemisch, aufwändige Aufreinigung"
+                        if lang == "de"
+                        else "complex natural-product mixture, demanding purification")
+            if isinstance(steps_ctx, int) and steps_ctx >= 5:
+                return (f"Multistep-Synthese ({steps_ctx} Schritte), Reagenz- und Energie-Aufwand"
+                        if lang == "de"
+                        else f"multistep synthesis ({steps_ctx} steps), reagent and energy load")
+            if raw_cost_ctx == "high":
+                return ("teure Rohstoffe (high COGS)"
+                        if lang == "de"
+                        else "expensive raw materials (high COGS)")
+            return ("mehrere Kostentreiber kombiniert"
+                    if lang == "de"
+                    else "multiple cost drivers combined")
+
+        # ---- MEDIUM cost: no single dominator ----
         if mtype_ctx == "peptide" and method_ctx == "chemical" and isinstance(steps_ctx, int) and steps_ctx >= 15:
-            return f"SPPS-Synthese ({steps_ctx} Kupplungen)" if lang == "de" else f"SPPS synthesis ({steps_ctx} couplings)"
-        # Differentiate biotech vs. chemical peptides — Glutathione is biotech,
-        # so "Synthese" is misleading.
-        if mtype_ctx == "peptide" and method_ctx in ("biotechnological", "biotech"):
-            return "Peptid-Fermentation + Chromatographie-Aufarbeitung" if lang == "de" else "peptide fermentation + chromatography"
-        if mtype_ctx == "peptide":
-            return "Peptid-Synthese + HPLC-Aufarbeitung" if lang == "de" else "peptide synthesis + HPLC workup"
-        if mtype_ctx == "protein":
-            return "Fermentation + Chromatographie-Sequenz" if lang == "de" else "fermentation + chromatography sequence"
-        if mtype_ctx == "natural_product" and pur_diff == "very high":
-            return "komplexes Naturstoff-Gemisch" if lang == "de" else "complex natural-product mixture"
+            return (f"SPPS-Synthese ({steps_ctx} Kupplungen), Rohstoffe moderat"
+                    if lang == "de"
+                    else f"SPPS synthesis ({steps_ctx} couplings), moderate feedstock cost")
         if isinstance(steps_ctx, int) and steps_ctx >= 4:
-            return f"Multistep-Synthese ({steps_ctx} Schritte)" if lang == "de" else f"multistep synthesis ({steps_ctx} steps)"
-        if raw_cost_ctx == "high":
-            return "teure Rohstoffe (high COGS)" if lang == "de" else "expensive raw materials (high COGS)"
-        if str(v).lower() in ("low", "niedrig"):
-            return "günstige Rohstoffe, einfache Aufarbeitung" if lang == "de" else "cheap raw materials, simple workup"
-        return "moderate Treiber, keine Einzeldominanz" if lang == "de" else "moderate drivers, no single dominator"
+            return (f"Multistep-Prozess ({steps_ctx} Schritte), Standard-Edukte"
+                    if lang == "de"
+                    else f"multistep process ({steps_ctx} steps), standard feedstock")
+        return ("moderate Treiber, keine Einzeldominanz"
+                if lang == "de"
+                else "moderate drivers, no single dominator")
 
     def _brief_risk(v: str) -> str:
         if msub_ctx == "antibody":
@@ -1016,8 +1076,55 @@ def export_report_pdf(
         contributors.append('Aufreinigung')
     if input_params.get('strict_waste_constraints'):
         contributors.append('Abfallbehandlung')
-    if contributors:
-        # Localize the contributor labels for English output.
+
+    # Bug B5 fix: in addition to the generic input-driven contributors,
+    # add SUBTYPE-SPECIFIC cost drivers so the report doesn't fall back
+    # to the "Aufreinigung, Rohstoffe und operative Overheads" generic
+    # string for almost every molecule.
+    _subtype_drivers_de = {
+        ("small_molecule", "volatile"):
+            ["Destillations-Energie", "Fermentationsmedium"],
+        ("small_molecule", "non_volatile"):
+            ["Reagenz-Kaskade", "Kristallisations-Lösungsmittel"],
+        ("natural_product", "alkaloid"):
+            ["Mehrstufige Reagenzien", "Kristallisation/Umkristallisation"],
+        ("natural_product", "terpene"):
+            ["Lösungsmittel-Volumen (Extraktion)", "Pflanzenmaterial-Logistik"],
+        ("peptide", "linear"):
+            ["Fmoc-Aminosäuren", "Kupplungsreagenzien (HBTU/DIPEA)", "RP-HPLC-Lösungsmittel"],
+        ("peptide", "cyclic"):
+            ["Fermentationsmedium (NRPS-Wirt)", "Multi-Step-Chromatographie", "Cyclisierungs-Ausbeute"],
+        ("protein", "antibody"):
+            ["Protein-A-Resin", "CHO-Zellkultur-Medium", "Virusfiltration"],
+        ("protein", "enzyme"):
+            ["Bioreaktor-Medium", "UF/DF-Membranen", "Formulierungs-Stabilisatoren"],
+    }
+    _subtype_drivers_en = {
+        ("small_molecule", "volatile"):
+            ["distillation energy", "fermentation medium"],
+        ("small_molecule", "non_volatile"):
+            ["reagent cascade", "crystallisation solvents"],
+        ("natural_product", "alkaloid"):
+            ["multi-step reagents", "crystallisation / recrystallisation"],
+        ("natural_product", "terpene"):
+            ["solvent volume (extraction)", "plant-material logistics"],
+        ("peptide", "linear"):
+            ["Fmoc amino acids", "coupling reagents (HBTU/DIPEA)", "RP-HPLC solvents"],
+        ("peptide", "cyclic"):
+            ["fermentation medium (NRPS host)", "multi-step chromatography", "cyclisation yield"],
+        ("protein", "antibody"):
+            ["protein-A resin", "CHO cell-culture medium", "viral filtration"],
+        ("protein", "enzyme"):
+            ["bioreactor medium", "UF/DF membranes", "formulation stabilisers"],
+    }
+    _mt_key = (
+        str(input_params.get("molecule_type") or "").lower(),
+        str(input_params.get("molecule_subtype") or "").lower(),
+    )
+    _subtype_drivers = (_subtype_drivers_en if lang == "en" else _subtype_drivers_de)
+    subtype_extras = _subtype_drivers.get(_mt_key, [])
+
+    if contributors or subtype_extras:
         if lang == "en":
             translation = {
                 "Rohstoffkosten": "raw-material cost",
@@ -1027,8 +1134,15 @@ def export_report_pdf(
             loc_contribs = [translation.get(c, c) for c in contributors]
         else:
             loc_contribs = contributors
+        # Merge subtype drivers in, dedup while preserving order.
+        seen = set()
+        merged = []
+        for c in loc_contribs + subtype_extras:
+            if c not in seen:
+                seen.add(c)
+                merged.append(c)
         prefix = L("pdf_main_cost_drivers")
-        elems.append(Paragraph(prefix + ' ' + ', '.join(loc_contribs) + '.', normal))
+        elems.append(Paragraph(prefix + ' ' + ', '.join(merged) + '.', normal))
     else:
         elems.append(Paragraph(L("pdf_main_cost_default"), normal))
 

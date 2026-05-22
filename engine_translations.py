@@ -293,6 +293,20 @@ _PHRASE_RULES = [
     (r"^Additional adjustments based on recognized process class$",
      r"Zusätzliche Anpassungen basierend auf erkannter Prozessklasse"),
 
+    # ---- Bug B1 i18n fix: improvement strings in the decision engine ----
+    # These are generated when cost == "high"/"very high", risk == "high",
+    # strict_waste etc.; they bypassed the existing H7 phrase rules because
+    # they end with "Potential cost reduction: <impact>" / "Erwartete
+    # Kosten-Reduzierung: <impact>" suffix that wasn't anchored.
+    (r"^Reduce number of synthesis steps to improve efficiency and lower cost.*$",
+     r"Schrittanzahl reduzieren, um Effizienz zu steigern und Kosten zu senken — Erwartete Kosten-Reduzierung: MITTEL bis HOCH"),
+    (r"^Evaluate alternative suppliers for high-cost precursors and reduce protecting-group use to lower COGS.*$",
+     r"Alternative Lieferanten für teure Vorprodukte prüfen und Schutzgruppen-Einsatz reduzieren, um die Herstellkosten (COGS) zu senken — Erwartete Kosten-Reduzierung: MITTEL"),
+    (r"^Implement process control improvements \(robust pH/temperature control, inline monitoring\) and simplify critical unit ops to reduce failure modes.*$",
+     r"Prozesskontrolle verbessern (robuste pH-/Temperatur-Regelung, Inline-Monitoring) und kritische Unit-Operations vereinfachen, um Fehlerquellen zu reduzieren — Erwartete Kosten-Reduzierung: MITTEL"),
+    (r"^Switch to less toxic reagents or reduce hazardous waste streams.*$",
+     r"Auf weniger toxische Reagenzien umsteigen oder gefährliche Abfallströme reduzieren — Erwartete Kosten-Reduzierung: MITTEL"),
+
     # ---- Bug H7 i18n fix: English engine strings flagged by deep audit ----
     (r"^Distillation likely feasible due to volatility; consider azeotrope management and reflux optimization\.?$",
      r"Destillation aufgrund der Flüchtigkeit gut machbar — Azeotrop-Management und Rückfluss-Optimierung berücksichtigen"),
