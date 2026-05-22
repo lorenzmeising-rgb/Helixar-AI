@@ -750,6 +750,83 @@ def export_report_pdf(
     input_params = blueprint.get('input_parameters') or {}
     has_adv_pur = bool(input_params.get('has_advanced_purification'))
 
+    # Bug F2 fix: a short "Why this route?" rationale that's always
+    # rendered, independent of whether issues / actions were produced.
+    # Previously the "Begründung"-Wort only appeared inside per-action
+    # rationale blocks, so simple molecules (Ethanol, Aspirin, Lipase, ...)
+    # had no answer to the basic question "why this method?" at all.
+    try:
+        _mol_type = (input_params.get("molecule_type") or "").lower()
+        _mol_sub = (input_params.get("molecule_subtype") or "").lower()
+        _method = (input_params.get("method") or "").lower()
+        if lang == "en":
+            _method_label = {
+                "chemical": "chemical synthesis",
+                "biotechnological": "biotechnological / fermentative production",
+                "extraction": "extraction from a natural source",
+            }.get(_method, _method or "the chosen production method")
+            _route_explainers = {
+                ("small_molecule", "volatile"):
+                    "for volatile small molecules, fermentation followed by distillation is the dominant industrial route (energy-efficient, well-established)",
+                ("small_molecule", "non_volatile"):
+                    "for non-volatile small molecules with established commodity benchmarks (aspirin, paracetamol, ibuprofen class), multi-step chemical synthesis with crystallisation polishing is the cost-optimum",
+                ("natural_product", "alkaloid"):
+                    "for alkaloids the route choice depends on plant-source availability vs. synthetic accessibility — for commercially established alkaloids (caffeine, theophylline) chemical synthesis is competitive",
+                ("natural_product", "terpene"):
+                    "for terpenes, extraction from the natural source is standard at scale; engineered fermentation (Amyris/Evolva platforms) is the emerging alternative",
+                ("peptide", "linear"):
+                    "for short linear peptides (< 30 AAs), SPPS is the established industrial standard; longer peptides increasingly use recombinant expression with chemical acylation",
+                ("peptide", "cyclic"):
+                    "for cyclic peptides with non-proteinogenic residues (Cyclosporine class), NRPS fermentation in T. inflatum / Streptomyces is the only industrially viable route",
+                ("protein", "antibody"):
+                    "for mAbs the industry standard is CHO fed-batch culture with Protein-A affinity capture; the choice of host is dictated by the need for human-like glycosylation",
+                ("protein", "enzyme"):
+                    "for industrial enzymes (detergent/food/feed grade), submerged fermentation in established hosts (A. oryzae, B. subtilis, P. pastoris) with UF/DF polishing is the cost-optimum",
+            }
+            _why = _route_explainers.get((_mol_type, _mol_sub))
+            _heading = "Route rationale"
+        else:
+            _method_label = {
+                "chemical": "chemische Synthese",
+                "biotechnological": "biotechnologische / fermentative Produktion",
+                "extraction": "Extraktion aus natürlicher Quelle",
+            }.get(_method, _method or "die gewählte Produktionsmethode")
+            _route_explainers = {
+                ("small_molecule", "volatile"):
+                    "Bei flüchtigen Kleinmolekülen ist Fermentation mit anschließender Destillation der industrielle Standard (energieeffizient, gut etabliert).",
+                ("small_molecule", "non_volatile"):
+                    "Bei nicht-flüchtigen Kleinmolekülen mit etablierten Commodity-Benchmarks (Aspirin-, Paracetamol-, Ibuprofen-Klasse) ist die mehrstufige chemische Synthese mit Kristallisations-Polishing kostenoptimal.",
+                ("natural_product", "alkaloid"):
+                    "Bei Alkaloiden hängt die Routenwahl von Pflanzenquellen-Verfügbarkeit gegenüber synthetischer Zugänglichkeit ab — für kommerziell etablierte Alkaloide (Caffeine, Theophyllin) ist die chemische Synthese konkurrenzfähig.",
+                ("natural_product", "terpene"):
+                    "Bei Terpenen ist die Extraktion aus der natürlichen Quelle im großen Maßstab Standard; Engineered-Fermentation (Amyris/Evolva-Plattformen) ist die aufkommende Alternative.",
+                ("peptide", "linear"):
+                    "Bei kurzen linearen Peptiden (< 30 AS) ist SPPS der etablierte industrielle Standard; längere Peptide nutzen zunehmend rekombinante Expression mit chemischer Acylierung.",
+                ("peptide", "cyclic"):
+                    "Bei cyclischen Peptiden mit nicht-proteinogenen Resten (Cyclosporin-Klasse) ist die NRPS-Fermentation in T. inflatum / Streptomyces die einzige industriell brauchbare Route.",
+                ("protein", "antibody"):
+                    "Bei mAbs ist der Industriestandard CHO-Fed-Batch mit Protein-A-Affinitätscapture; die Wahl des Wirts wird durch die Notwendigkeit humanähnlicher Glykosylierung diktiert.",
+                ("protein", "enzyme"):
+                    "Bei industriellen Enzymen (Detergens-/Food-/Feed-Grade) ist die Submerged-Fermentation in etablierten Wirten (A. oryzae, B. subtilis, P. pastoris) mit UF/DF-Polishing kostenoptimal.",
+            }
+            _why = _route_explainers.get((_mol_type, _mol_sub))
+            _heading = "Routenwahl-Begründung"
+        if _why:
+            elems.append(Paragraph(_heading, styles["Section"]))
+            if lang == "en":
+                elems.append(Paragraph(
+                    f"The engine selected <b>{_method_label}</b> for this molecule: {_why}.",
+                    normal,
+                ))
+            else:
+                elems.append(Paragraph(
+                    f"Die Engine hat <b>{_method_label}</b> für dieses Molekül gewählt: {_why}",
+                    normal,
+                ))
+            elems.append(Spacer(1, 8))
+    except Exception:
+        pass
+
     # Numeric input summary — make sure the report reflects the exact values
     # the user entered (not just the qualitative buckets).
     pct = input_params.get("desired_purity_percent")

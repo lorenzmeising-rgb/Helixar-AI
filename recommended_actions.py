@@ -39,6 +39,7 @@ RULE_SOURCES = {
     "long_lead_time": "Christopher M., Logistics and Supply Chain Management, 5th ed. 2016, Pearson (ISBN 978-1-292-08379-7) — vendor-managed inventory and forecast collaboration",
     "raw_material_legacy": "ICH Q7 Good Manufacturing Practice Guide for APIs (Standard) — supplier qualification; Walsh G., Pharmaceutical Biotechnology, 2nd ed. 2018, Wiley (ISBN 978-1-119-11518-7)",
     "edukt_substitution": "Sheldon, Green Chem. 2017 — E-factor (doi:10.1039/C7GC00149E); Anastas & Warner, Green Chemistry: Theory and Practice, Oxford Univ. Press 1998 (ISBN 978-0-19-850698-0)",
+    "volatile_distillation_energy": "Kiss A.A., Advanced Distillation Technologies, Wiley 2013 (ISBN 978-1-119-99361-9) — heat-integrated and divided-wall column design; Vane LM., Sep. Purif. Technol. 2008 — Distillation/membrane hybrid separations for biofuels (doi:10.1016/j.seppur.2008.02.013); Huang K. et al., Chem. Eng. Process. 2008 — Heat-pump-assisted distillation (doi:10.1016/j.cep.2007.05.024)",
 }
 
 from typing import Dict, Any, List
@@ -566,6 +567,49 @@ ACTION_TEXTS = {
             "prerequisites": "Method redevelopment, possibly mass-balance analysis.",
         },
     },
+    # Bug F1 fix: volatile solvents (Ethanol, Acetone, Methanol etc.) had
+    # risk=high after K1 but no rule matched, so recommended_actions came
+    # back empty. Distillation is the dominant DSP step for volatiles and
+    # is also where the bulk of the energy + COGS sits → add a targeted
+    # energy-efficiency rule.
+    "volatile_distillation_energy": {
+        "de": {
+            "title": "Energieeffizienz der Destillation optimieren",
+            "rationale": (
+                "Für flüchtige Lösungsmittel ({mname}) ist die Destillation der dominierende "
+                "Energieverbraucher (typ. 40–60 % der Betriebskosten). Hebel: Wärmeintegration "
+                "(MVR / TVR), Trennwand-Kolonnen (DWC) oder Wärmepumpen-Destillation. Für "
+                "azeotrope Mischungen (z. B. Ethanol/Wasser): Hybrid-Verfahren mit "
+                "Membran- oder Molekularsieb-Adsorption."
+            ),
+            "expected_impact": (
+                "Energieeinsparung 20–40 % gegenüber konventioneller Destillation; "
+                "CAPEX-Amortisation typ. 1,5–3 Jahre bei großen Bulk-Anlagen."
+            ),
+            "prerequisites": (
+                "Energie-Audit der bestehenden Destillation; ggf. Process-Simulation "
+                "(Aspen Plus / ProSim) zur Quantifizierung des Hybrid-Konzepts."
+            ),
+        },
+        "en": {
+            "title": "Optimize distillation energy efficiency",
+            "rationale": (
+                "For volatile solvents ({mname}), distillation is the dominant energy "
+                "consumer (typically 40–60 % of operating cost). Levers: heat integration "
+                "(MVR / TVR), divided-wall columns (DWC) or heat-pump-assisted distillation. "
+                "For azeotropic mixtures (e.g. ethanol/water): hybrid schemes with "
+                "membrane separation or molecular-sieve adsorption."
+            ),
+            "expected_impact": (
+                "Energy savings 20–40 % vs. conventional distillation; CAPEX payback "
+                "typically 1.5–3 years for large bulk plants."
+            ),
+            "prerequisites": (
+                "Energy audit of the existing distillation; if needed, process simulation "
+                "(Aspen Plus / ProSim) to quantify the hybrid scheme."
+            ),
+        },
+    },
 }
 
 
@@ -1083,6 +1127,21 @@ def _rule_biotech_titer_optimization(p: Dict[str, Any], lang: str) -> List[Dict[
     return out
 
 
+def _rule_volatile_distillation_energy(p: Dict[str, Any], lang: str) -> List[Dict[str, Any]]:
+    """Bug F1 fix: volatile small molecules ended up with risk=high after K1
+    but no rule fired (refolding/PTM/biotech-switch all gated by type). For
+    Ethanol/Acetone/Methanol/Isopropanol/Ethyl acetate the dominant
+    optimisation lever is distillation energy efficiency. Surface that as
+    a concrete, source-backed recommendation."""
+    msub = (p.get("molecule_subtype") or "").lower()
+    mtype = (p.get("molecule_type") or "").lower()
+    if not (mtype == "small_molecule" and msub == "volatile"):
+        return []
+    mname = p.get("molecule_name") or ("dieses Lösungsmittel" if lang == "de" else "this solvent")
+    return [_make("volatile_distillation_energy", lang, effort="medium",
+                  current_state="", optimized_state="", mname=mname)]
+
+
 def build_recommended_actions(process_input: Dict[str, Any], lang: str = "de") -> List[Dict[str, Any]]:
     """Apply all rules and return the deduplicated list of recommended actions."""
     if not isinstance(process_input, dict):
@@ -1105,6 +1164,8 @@ def build_recommended_actions(process_input: Dict[str, Any], lang: str = "de") -
         _rule_biophys_ptm,
         # Bug F: catch-all for biomolecules with cost pressure
         _rule_biotech_titer_optimization,
+        # Bug F1 fix: catch-all for volatile small molecules
+        _rule_volatile_distillation_energy,
     ):
         try:
             actions.extend(rule(process_input, lang))
