@@ -1724,6 +1724,10 @@ class DecisionEngine:
 
             cost = mapScore(costScore)
             risk = mapScore(riskScore)
+            # (Bug B3 reconciliation moved to right before the `analysis = {...}`
+            # dict so it isn't overwritten by the trade-off engine that
+            # mutates `cost` further down via `adjustedCost`.)
+
             if efficiencyScore >= 8:
                 efficiency = "high"
             elif efficiencyScore >= 5:
@@ -2748,6 +2752,49 @@ class DecisionEngine:
             # Normalize improvement phrasing (remove arrows and make short)
             try:
                 dedup_impr = [s.replace('→', '-').replace('Potential cost reduction', 'Expected cost reduction') for s in dedup_impr]
+            except Exception:
+                pass
+
+            # Bug B3 fix: reconcile cost-label with the COGS estimate.
+            # The accumulated costScore produced two failure modes:
+            #   (a) "Kosten MITTEL" while COGS showed 100k–1.5M €/kg
+            #       (Liraglutide) — too low
+            #   (b) "Kosten SEHR HOCH" while COGS showed 32–180 €/kg
+            #       (Caffeine after H8 override) — too high
+            # COGS is the more reliable price anchor (published API
+            # benchmarks). We use it as the CANONICAL cost label and let
+            # the engine's costScore only nudge by at most one band — so
+            # process drivers (long lead time, single source) can still
+            # bump the label by one notch.
+            # Placed here AFTER the trade-off engine and `adjustedCost`
+            # mutations so it isn't overwritten downstream.
+            try:
+                from cogs_estimator import estimate_cogs as _estimate_cogs
+                _cogs = _estimate_cogs(p)
+                _high_eur = _cogs.get("high_eur_per_kg")
+                if isinstance(_high_eur, (int, float)) and _high_eur is not None:
+                    # Thresholds anchored to public API price benchmarks
+                    # (Walsh 2018; Kelley 2009; Federsel 2005):
+                    if _high_eur >= 100000.0:
+                        _cogs_label = "very high"
+                    elif _high_eur >= 1000.0:
+                        _cogs_label = "high"
+                    elif _high_eur >= 100.0:
+                        _cogs_label = "medium"
+                    else:
+                        _cogs_label = "low"
+                    _level_rank = {"low": 0, "medium": 1, "high": 2, "very high": 3}
+                    _rank_to_label = {v: k for k, v in _level_rank.items()}
+                    _cogs_rank = _level_rank.get(_cogs_label, 1)
+                    _engine_rank = _level_rank.get(cost, 1)
+                    _diff = _engine_rank - _cogs_rank
+                    if _diff > 1:
+                        _rec_rank = _cogs_rank + 1
+                    elif _diff < -1:
+                        _rec_rank = _cogs_rank - 1
+                    else:
+                        _rec_rank = _engine_rank
+                    cost = _rank_to_label[max(0, min(3, _rec_rank))]
             except Exception:
                 pass
 

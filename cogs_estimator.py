@@ -331,6 +331,7 @@ def estimate_cogs(process_input: Dict[str, Any]) -> Dict[str, Any]:
     # Per-molecule override takes precedence over the generic cluster
     # (Bug H8 fix: avoids misleading ranges for outlier molecules).
     anchor = _MOLECULE_COGS_OVERRIDES.get(mname)
+    is_override = anchor is not None
     if anchor is None:
         anchor = _ANCHORS.get((mtype, msub, method))
     confidence = "high"
@@ -365,6 +366,14 @@ def estimate_cogs(process_input: Dict[str, Any]) -> Dict[str, Any]:
     rm_share = float(breakdown.get("rm", 0.4))
 
     # ----- Apply modifiers -----
+    # Bug B4 fix: per-molecule overrides (Caffeine, Linalool, Liraglutide)
+    # are calibrated for a representative real-world process and already
+    # implicitly include "typical" purity, step-count and RM-price
+    # assumptions. Stacking the full multiplier chain on top of an
+    # override pushes the range out of the empirically validated band
+    # (Caffeine 8–30 €/kg → 32–180 €/kg). When the override is active,
+    # damp the purity / steps / raw-material multipliers strongly. Scale
+    # economy stays in effect (it's a real, monotonic cost driver).
     pm = _purity_multiplier(process_input.get("desired_purity_percent"))
     sm_low, sm_high = _scale_multiplier(process_input.get("scale_kg_per_year"))
     stm = _steps_multiplier(process_input.get("number_of_steps"))
@@ -372,6 +381,11 @@ def estimate_cogs(process_input: Dict[str, Any]) -> Dict[str, Any]:
         process_input.get("raw_material_cost_eur_per_kg"),
         base_low, rm_share,
     )
+    if is_override:
+        # Compress everything except scale toward 1.0 by ~75 %.
+        pm = 1.0 + 0.25 * (pm - 1.0)
+        stm = 1.0 + 0.25 * (stm - 1.0)
+        rmm = 1.0 + 0.25 * (rmm - 1.0)
 
     low = base_low * pm * sm_low * stm * rmm
     high = base_high * pm * sm_high * stm * rmm
@@ -379,9 +393,9 @@ def estimate_cogs(process_input: Dict[str, Any]) -> Dict[str, Any]:
     # Cap compounding — prevent runaway upper bounds when multiple
     # multipliers stack (e.g. 30-step SPPS + €3000/kg RM + 99.5 % purity
     # would otherwise reach 25–30× base which exceeds real-world
-    # observations).
-    _MAX_COMPOUND_LOW = 4.0
-    _MAX_COMPOUND_HIGH = 6.0
+    # observations). Override anchors get a tighter cap.
+    _MAX_COMPOUND_LOW = 1.5 if is_override else 4.0
+    _MAX_COMPOUND_HIGH = 2.0 if is_override else 6.0
     low = min(low, base_low * _MAX_COMPOUND_LOW)
     high = min(high, base_high * _MAX_COMPOUND_HIGH)
     # Ensure low <= high after capping
