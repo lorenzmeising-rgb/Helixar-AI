@@ -1470,6 +1470,195 @@ def export_report_pdf(
                 elems.append(Paragraph(f"• {_safe_val(n)}", normal))
         elems.append(PageBreak())
 
+    # ----------------------------------------------------------------------
+    # Feature A — Side-by-side route comparison
+    # ----------------------------------------------------------------------
+    # Process scientists' core question is "which route should I pick?".
+    # The engine scores all viable methods (chemical / biotech / extraction)
+    # for the same molecule and surfaces them in a comparative table with
+    # a ranked engine recommendation.
+    try:
+        from route_comparison import compare_routes as _cmp_routes, METHODS_DE, METHODS_EN
+        comparison = _cmp_routes(input_params)
+    except Exception:
+        comparison = None
+        METHODS_DE = {}
+        METHODS_EN = {}
+
+    # Single-route classes (mAbs, industrial enzymes): render a short
+    # note explaining why no alternatives exist, instead of skipping
+    # the whole section. Pilot reviewers explicitly asked for that
+    # context — they want to know WHY only one route is in scope.
+    if comparison and comparison.rows and len(comparison.rows) == 1:
+        elems.append(Paragraph(
+            "Routenvergleich" if lang != "en" else "Route Comparison",
+            styles["ExecTitle"],
+        ))
+        elems.append(Spacer(1, 4))
+        _msub_one = (comparison.molecule_subtype or "").lower()
+        _explanations_de = {
+            "antibody": ("Für monoklonale Antikörper ist die CHO-basierte "
+                         "Säuger-Zellkultur die einzige industriell etablierte "
+                         "Route. Chemische Vollsynthese oder Extraktion sind "
+                         "für ein 145-kDa-Protein mit komplexer Glykosylierung "
+                         "nicht realistisch."),
+            "enzyme":   ("Für rekombinante Industrieenzyme ist die mikrobielle "
+                         "Fermentation (typ. A. oryzae, B. subtilis, E. coli) "
+                         "die einzige skalierbare Route. Chemische Synthese ist "
+                         "für Proteine in dieser Größenordnung nicht realistisch."),
+        }
+        _explanations_en = {
+            "antibody": ("Mammalian CHO cell culture is the only industrially "
+                         "established route for monoclonal antibodies. Total "
+                         "chemical synthesis or extraction are not feasible for "
+                         "a 145 kDa glycoprotein."),
+            "enzyme":   ("Microbial fermentation (typ. A. oryzae, B. subtilis, "
+                         "E. coli) is the only scalable route for recombinant "
+                         "industrial enzymes. Chemical synthesis is not feasible "
+                         "for proteins in this size class."),
+        }
+        msg = (_explanations_en if lang == "en" else _explanations_de).get(
+            _msub_one,
+            "Für dieses Subtyp ist nur eine Produktionsroute realistisch."
+            if lang != "en" else
+            "Only one production route is realistic for this subtype.",
+        )
+        elems.append(Paragraph(msg, normal))
+        elems.append(Spacer(1, 8))
+        only = comparison.rows[0]
+        method_lbl = only.method_label_en if lang == "en" else only.method_label_de
+        elems.append(Paragraph(
+            f"<b>{'Selected route' if lang == 'en' else 'Gewählte Route'}:</b> "
+            f"<font color='#1E3A5F'><b>{method_lbl}</b></font>",
+            normal,
+        ))
+        elems.append(PageBreak())
+
+    elif comparison and comparison.rows and len(comparison.rows) >= 2:
+        elems.append(Paragraph(
+            "Routenvergleich" if lang != "en" else "Route Comparison",
+            styles["ExecTitle"],
+        ))
+        elems.append(Spacer(1, 4))
+        _intro = (
+            "Die Engine bewertet alle für dieses Molekül plausiblen Routen "
+            "parallel und stellt sie hier vergleichend gegenüber. Die "
+            "empfohlene Route ist mit ★ markiert."
+            if lang != "en" else
+            "The engine scores every plausible route for this molecule in "
+            "parallel and presents them side-by-side. The recommended route "
+            "is marked with ★."
+        )
+        elems.append(Paragraph(_intro, styles["BodySmall"]))
+        elems.append(Spacer(1, 10))
+
+        # ---- The comparison table ----
+        from reportlab.platypus import Table, TableStyle
+        # Header row in brand navy + bold
+        _hdr_de = ["", "Methode", "Cost", "Risk", "Effizienz", "COGS €/kg", "Yield", "Schritte"]
+        _hdr_en = ["", "Method", "Cost", "Risk", "Efficiency", "COGS €/kg", "Yield", "Steps"]
+        header = _hdr_en if lang == "en" else _hdr_de
+
+        # Re-use the tier-label helpers so the comparison matches the
+        # executive-summary wording exactly.
+        def _tier_short(label: str, metric: str) -> str:
+            return _tier_label_text(label, metric)
+
+        def _fmt_cogs_cell(lo, hi):
+            if lo is None or hi is None:
+                return "—"
+            _f = (lambda x: f"{x:,.0f}".replace(",", "."))
+            if lang == "en":
+                _f = lambda x: f"{x:,.0f}"
+            return f"{_f(lo)}–{_f(hi)}"
+
+        rows_data = [header]
+        for row in comparison.rows:
+            mark = "★" if row.decision_rank == 1 else f"{row.decision_rank}."
+            method_lbl = row.method_label_en if lang == "en" else row.method_label_de
+            cogs_cell = _fmt_cogs_cell(row.cogs_low_eur_per_kg, row.cogs_high_eur_per_kg)
+            steps_cell = (
+                f"{row.n_production_steps}" if row.has_concrete_steps
+                else ("generic" if lang == "en" else "generisch")
+            )
+            yield_cell = row.expected_yield or "—"
+            rows_data.append([
+                mark,
+                method_lbl,
+                _tier_short(row.cost_label, "cost"),
+                _tier_short(row.risk_label, "risk"),
+                _tier_short(row.efficiency_label, "efficiency"),
+                cogs_cell,
+                yield_cell,
+                steps_cell,
+            ])
+
+        # Available width on A4 with 18mm side margins ≈ 174 mm
+        # Distribute: rank 10, method 52, cost 22, risk 22, eff 22, cogs 22, yield 14, steps 10
+        col_widths = [
+            10 * mm, 52 * mm, 22 * mm, 22 * mm, 22 * mm, 22 * mm, 14 * mm, 10 * mm,
+        ]
+        table = Table(rows_data, colWidths=col_widths, hAlign="LEFT", repeatRows=1)
+        table.setStyle(TableStyle([
+            # Header row
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1E3A5F")),
+            ("TEXTCOLOR",  (0, 0), (-1, 0), colors.white),
+            ("FONTNAME",   (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE",   (0, 0), (-1, 0), 8.5),
+            ("BOTTOMPADDING", (0, 0), (-1, 0), 5),
+            ("TOPPADDING",    (0, 0), (-1, 0), 5),
+            # Body
+            ("FONTSIZE", (0, 1), (-1, -1), 8.5),
+            ("VALIGN",   (0, 0), (-1, -1), "MIDDLE"),
+            ("ALIGN",    (0, 0), (0, -1), "CENTER"),   # rank column
+            ("ALIGN",    (5, 1), (5, -1), "RIGHT"),    # COGS column
+            ("ALIGN",    (6, 1), (-1, -1), "CENTER"),  # yield + steps
+            ("BOTTOMPADDING", (0, 1), (-1, -1), 4),
+            ("TOPPADDING",    (0, 1), (-1, -1), 4),
+            # Highlight the recommended row (first body row)
+            ("BACKGROUND", (0, 1), (-1, 1), colors.HexColor("#E8F0F7")),
+            ("FONTNAME",   (1, 1), (1, 1), "Helvetica-Bold"),
+            # Subtle row separators
+            ("LINEBELOW", (0, 0), (-1, 0), 0.5, colors.HexColor("#B0BEC5")),
+            ("LINEBELOW", (0, 1), (-1, -2), 0.25, colors.HexColor("#DDE5EC")),
+        ]))
+        elems.append(table)
+        elems.append(Spacer(1, 10))
+
+        # Engine reason
+        if comparison.recommendation_reason_de:
+            reason = (comparison.recommendation_reason_en
+                      if lang == "en"
+                      else comparison.recommendation_reason_de)
+            top_method = (METHODS_EN.get(comparison.recommended_method, comparison.recommended_method)
+                          if lang == "en"
+                          else METHODS_DE.get(comparison.recommended_method, comparison.recommended_method))
+            label_line = (
+                f"<b>Engine-Empfehlung:</b> <font color='#1E3A5F'><b>{top_method}</b></font>"
+                if lang != "en" else
+                f"<b>Engine recommendation:</b> <font color='#1E3A5F'><b>{top_method}</b></font>"
+            )
+            elems.append(Paragraph(label_line, normal))
+            elems.append(Paragraph(
+                f"<i><font color='#6B7B8A'>{reason}</font></i>",
+                styles["BodySmall"],
+            ))
+            elems.append(Spacer(1, 6))
+
+        # Legend
+        _legend_de = (
+            "<i><font color='#6B7B8A' size='8'>★ = Engine-Empfehlung · "
+            "„generisch\" = Cluster-Schätzung ohne hinterlegte Routen-Schritte · "
+            "Tier-Begriffe identisch mit Executive Summary auf Seite 1.</font></i>"
+        )
+        _legend_en = (
+            "<i><font color='#6B7B8A' size='8'>★ = engine's recommendation · "
+            "\"generic\" = cluster estimate without stored route steps · "
+            "tier terms identical to the executive summary on page 1.</font></i>"
+        )
+        elems.append(Paragraph(_legend_en if lang == "en" else _legend_de, normal))
+        elems.append(PageBreak())
+
     # PAGE 3 — Risks & Trade-offs
     elems.append(Paragraph(L("pdf_risks_tradeoffs"), styles["ExecTitle"]))
     elems.append(Spacer(1, 8))
