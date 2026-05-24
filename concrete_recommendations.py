@@ -980,8 +980,11 @@ MOLECULE_HINTS: Dict[str, Dict[str, Any]] = {
     },
     "caffeine": {
         "chemical": {
-            "route": "Traube-Synthese aus Dimethylharnstoff + Cyanessigsäure",
-            "route_en": "Traube synthesis from dimethylurea + cyanoacetic acid",
+            # Bug E4 fix: was previously keyed under "route" — _make_route()
+            # only reads "reagents" / "organism" / "source", so the
+            # Produktionsroute section was empty in the Caffeine PDF.
+            "reagents": "Traube-Synthese: N,N'-Dimethylharnstoff + Cyanessigsäure → Theophyllin → N7-Methylierung",
+            "reagents_en": "Traube synthesis: N,N'-dimethylurea + cyanoacetic acid → theophylline → N7-methylation",
             "yield_range_percent": (60, 75),
             "literature_source": "Traube, Ber. Dtsch. Chem. Ges. 1900, 33 (3), 3035–3056 (doi:10.1002/cber.19000330354); Maier, Ullmann's Encyclopedia of Industrial Chemistry, 7th ed., Wiley-VCH 2011 — Purines and Caffeine (doi:10.1002/14356007.a07_513.pub2)",
             "production": {

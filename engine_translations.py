@@ -299,13 +299,13 @@ _PHRASE_RULES = [
     # they end with "Potential cost reduction: <impact>" / "Erwartete
     # Kosten-Reduzierung: <impact>" suffix that wasn't anchored.
     (r"^Reduce number of synthesis steps to improve efficiency and lower cost.*$",
-     r"Schrittanzahl reduzieren, um Effizienz zu steigern und Kosten zu senken — Erwartete Kosten-Reduzierung: MITTEL bis HOCH"),
+     r"Schrittanzahl reduzieren, um Effizienz zu steigern und Kosten zu senken — Erwartete Kosten-Reduzierung: mittel bis HOCH"),
     (r"^Evaluate alternative suppliers for high-cost precursors and reduce protecting-group use to lower COGS.*$",
-     r"Alternative Lieferanten für teure Vorprodukte prüfen und Schutzgruppen-Einsatz reduzieren, um die Herstellkosten (COGS) zu senken — Erwartete Kosten-Reduzierung: MITTEL"),
+     r"Alternative Lieferanten für teure Vorprodukte prüfen und Schutzgruppen-Einsatz reduzieren, um die Herstellkosten (COGS) zu senken — Erwartete Kosten-Reduzierung: mittel"),
     (r"^Implement process control improvements \(robust pH/temperature control, inline monitoring\) and simplify critical unit ops to reduce failure modes.*$",
-     r"Prozesskontrolle verbessern (robuste pH-/Temperatur-Regelung, Inline-Monitoring) und kritische Unit-Operations vereinfachen, um Fehlerquellen zu reduzieren — Erwartete Kosten-Reduzierung: MITTEL"),
+     r"Prozesskontrolle verbessern (robuste pH-/Temperatur-Regelung, Inline-Monitoring) und kritische Unit-Operations vereinfachen, um Fehlerquellen zu reduzieren — Erwartete Kosten-Reduzierung: mittel"),
     (r"^Switch to less toxic reagents or reduce hazardous waste streams.*$",
-     r"Auf weniger toxische Reagenzien umsteigen oder gefährliche Abfallströme reduzieren — Erwartete Kosten-Reduzierung: MITTEL"),
+     r"Auf weniger toxische Reagenzien umsteigen oder gefährliche Abfallströme reduzieren — Erwartete Kosten-Reduzierung: mittel"),
 
     # ---- Bug H7 i18n fix: English engine strings flagged by deep audit ----
     (r"^Distillation likely feasible due to volatility; consider azeotrope management and reflux optimization\.?$",

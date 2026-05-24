@@ -6,6 +6,45 @@ from language_de import LABELS
 from molecules_db import get_smiles_for as _get_smiles_for
 
 
+# Bug C1 fix: locale-aware number formatting.
+#
+# The old `f"{kg:,.0f}" if kg >= 1000 else f"{kg:.3f}"` produced two
+# disasters in German PDFs:
+#   - "{100:.3f}" → "100.000"  (= three decimals — looks identical to
+#     the German "einhunderttausend" thousands-separator format)
+#   - "{5000:,.0f}" → "5,000"   (= US comma thousands-separator,
+#     reads in German as 5 with decimals)
+# Both make readers think the scale is off by 1000x.
+#
+# This helper produces canonical German / English number formats:
+#   format_int_de(100)     → "100"
+#   format_int_de(5000)    → "5.000"
+#   format_int_de(100000)  → "100.000"
+#   format_int_en(100000)  → "100,000"
+
+def _format_int_de(v: float) -> str:
+    """Format integer with German thousands separator (point)."""
+    return f"{int(round(float(v))):,}".replace(",", ".")
+
+
+def _format_int_en(v: float) -> str:
+    """Format integer with English thousands separator (comma)."""
+    return f"{int(round(float(v))):,}"
+
+
+def _format_money_de(v: float) -> str:
+    """Format currency value with German conventions (thousands=., decimal=,)."""
+    # Python `:,.2f` produces "1,234.56" (US). Swap-convert to DE.
+    raw = f"{float(v):,.2f}"
+    # temporary placeholder, then swap
+    return raw.replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def _format_money_en(v: float) -> str:
+    """Format currency value with English conventions (thousands=,, decimal=.)."""
+    return f"{float(v):,.2f}"
+
+
 # Bug H2 fix: ReportLab's default Helvetica only supports WinAnsi/CP1252.
 # Latin Extended-A characters like 'ń' (U+0144) render as '■' (U+25A0).
 # Pre-transliterate problematic characters to their nearest ASCII/Latin-1
@@ -991,19 +1030,35 @@ def export_report_pdf(
     has_any_numeric = any(v is not None for v in (pct, kg, eur, n_supp, lead, single_region))
     if has_any_numeric:
         elems.append(Paragraph(L("pdf_quantitative_inputs"), styles["Section"]))
+        # Bug C1 fix: locale-aware number formatting.
+        # German uses point as thousands separator and comma as decimal;
+        # English uses comma as thousands and point as decimal. Old code
+        # mixed both inside the same German report (e.g. "100.000" for
+        # 100, "5,000" for 5000) which made readers think the scale was
+        # off by 1000x.
+        _fmt_int = _format_int_en if lang == "en" else _format_int_de
+        _fmt_money = _format_money_en if lang == "en" else _format_money_de
         if pct is not None:
-            elems.append(Paragraph(f"<b>{L('pdf_target_purity')}:</b> {pct:.2f} %", normal))
+            pct_str = f"{pct:.2f}".replace(".", ",") if lang != "en" else f"{pct:.2f}"
+            elems.append(Paragraph(f"<b>{L('pdf_target_purity')}:</b> {pct_str} %", normal))
         if kg is not None:
-            kg_disp = f"{kg:,.0f}" if kg >= 1000 else f"{kg:.3f}"
+            # Integers for whole-kg scales, fractional for sub-kg (lab)
+            if float(kg) >= 1.0:
+                kg_disp = _fmt_int(kg)
+            else:
+                # Sub-kg lab scale: show with up to 3 decimals
+                kg_disp = (f"{float(kg):.3f}".replace(".", ",")
+                           if lang != "en" else f"{float(kg):.3f}")
             kg_unit = "kg/year" if lang == "en" else "kg/Jahr"
             elems.append(Paragraph(f"<b>{L('pdf_target_scale')}:</b> {kg_disp} {kg_unit}", normal))
         if eur is not None:
-            elems.append(Paragraph(f"<b>{L('pdf_raw_material_price')}:</b> {eur:,.2f} €/kg", normal))
+            elems.append(Paragraph(f"<b>{L('pdf_raw_material_price')}:</b> {_fmt_money(eur)} €/kg", normal))
         if n_supp is not None:
             elems.append(Paragraph(f"<b>{L('pdf_qualified_suppliers')}:</b> {int(n_supp)}", normal))
         if lead is not None:
             weeks_unit = "weeks" if lang == "en" else "Wochen"
-            elems.append(Paragraph(f"<b>{L('pdf_lead_time')}:</b> {lead:.1f} {weeks_unit}", normal))
+            lead_str = (f"{lead:.1f}".replace(".", ",") if lang != "en" else f"{lead:.1f}")
+            elems.append(Paragraph(f"<b>{L('pdf_lead_time')}:</b> {lead_str} {weeks_unit}", normal))
         if single_region is not None:
             geo = L("pdf_geo_concentrated") if single_region else L("pdf_geo_diversified")
             elems.append(Paragraph(f"<b>{L('pdf_supplier_geography')}:</b> {geo}", normal))
@@ -1241,7 +1296,14 @@ def export_report_pdf(
 
     elems.append(Paragraph(L("pdf_cost_impact"), styles["Section"]))
     cost_level = (analysis.get('costLevel') or analysis.get('cost') or 'n/a')
-    elems.append(Paragraph(f"{L('pdf_cost_level')}: <b>{TV(str(cost_level).upper())}</b>", normal))
+    # Bug E5 fix: render the cost-level here with the same tier label
+    # used in the executive summary (Commodity-Niveau / Mid-Tier-API /
+    # Specialty-Tier / Biologika-Niveau) instead of leaking the uppercase
+    # HOCH/MITTEL/NIEDRIG bucket word.
+    elems.append(Paragraph(
+        f"{L('pdf_cost_level')}: {perf_value_markup(str(cost_level), metric='cost')}",
+        normal,
+    ))
 
     # ---- COGS model: concrete €/kg range + breakdown table ----
     # Inserted between qualitative cost level and cost drivers so reviewers
@@ -1339,7 +1401,15 @@ def export_report_pdf(
     else:
         elems.append(Paragraph(L("pdf_no_cost_drivers"), normal))
     savings = analysis.get('savingsPotential') or 'low'
-    elems.append(Paragraph(f"{L('pdf_savings_potential')}: <b>{TV(str(savings).upper())}</b>", normal))
+    # Bug E5 fix: render savings-potential as mixed-case German /
+    # English instead of the uppercase token leak.
+    _savings_de = {"low": "niedrig", "medium": "moderat", "high": "hoch", "very high": "sehr hoch"}
+    _savings_en = {"low": "low", "medium": "moderate", "high": "high", "very high": "very high"}
+    _savings_table = _savings_en if lang == "en" else _savings_de
+    savings_label = _savings_table.get(str(savings).lower(), str(savings).lower())
+    elems.append(Paragraph(
+        f"{L('pdf_savings_potential')}: <b>{savings_label}</b>", normal,
+    ))
 
     # Downstream insights (type-specific guidance)
     downstream_insights = (analysis.get('downstream_insights') or [])

@@ -391,13 +391,19 @@ def estimate_cogs(process_input: Dict[str, Any]) -> Dict[str, Any]:
     high = base_high * pm * sm_high * stm * rmm
 
     # Cap compounding — prevent runaway upper bounds when multiple
-    # multipliers stack (e.g. 30-step SPPS + €3000/kg RM + 99.5 % purity
-    # would otherwise reach 25–30× base which exceeds real-world
-    # observations). Override anchors get a tighter cap.
-    _MAX_COMPOUND_LOW = 1.5 if is_override else 4.0
-    _MAX_COMPOUND_HIGH = 2.0 if is_override else 6.0
+    # multipliers stack. Override anchors get a TIGHT cap because they
+    # are explicit per-molecule calibrations against published price
+    # benchmarks (Bug C3 fix: previous cap of 2.0× pushed Caffeine to
+    # 60 €/kg vs target 30; tightened to 1.3× = 30 vs target 30).
+    _MAX_COMPOUND_LOW = 1.2 if is_override else 4.0
+    _MAX_COMPOUND_HIGH = 1.3 if is_override else 6.0
     low = min(low, base_low * _MAX_COMPOUND_LOW)
     high = min(high, base_high * _MAX_COMPOUND_HIGH)
+    # Also floor at base × 0.7 — overrides shouldn't drop too far below
+    # the empirical range even at lab scale.
+    if is_override:
+        low = max(low, base_low * 0.7)
+        high = max(high, base_high * 0.7)
     # Ensure low <= high after capping
     if low > high:
         low, high = high, low
@@ -417,20 +423,37 @@ def estimate_cogs(process_input: Dict[str, Any]) -> Dict[str, Any]:
     drivers_en: List[str] = []
     pct_in = process_input.get("desired_purity_percent")
     if isinstance(pct_in, (int, float)) and float(pct_in) >= 99.0:
-        drivers_de.append(f"Reinheit {float(pct_in):.1f} % × {pm:.2f}")
+        # Locale-aware decimals (Bug E6)
+        _pct_de = f"{float(pct_in):.1f}".replace(".", ",")
+        _pm_de = f"{pm:.2f}".replace(".", ",")
+        drivers_de.append(f"Reinheit {_pct_de} % × {_pm_de}")
         drivers_en.append(f"purity {float(pct_in):.1f} % × {pm:.2f}")
     kg_in = process_input.get("scale_kg_per_year")
     if isinstance(kg_in, (int, float)):
-        drivers_de.append(f"Maßstab {float(kg_in):.0f} kg/Jahr × {sm_low:.2f}–{sm_high:.2f}")
-        drivers_en.append(f"scale {float(kg_in):.0f} kg/year × {sm_low:.2f}–{sm_high:.2f}")
+        # Bug E6 fix: locale-aware thousands formatting so the German
+        # report doesn't show "5000 kg/Jahr" next to "5.000 kg/Jahr"
+        # earlier in the same document.
+        _kg_int = int(round(float(kg_in)))
+        kg_de = f"{_kg_int:,}".replace(",", ".")
+        kg_en = f"{_kg_int:,}"
+        # Comma-based DE decimal for multipliers
+        sm_low_de = f"{sm_low:.2f}".replace(".", ",")
+        sm_high_de = f"{sm_high:.2f}".replace(".", ",")
+        drivers_de.append(f"Maßstab {kg_de} kg/Jahr × {sm_low_de}–{sm_high_de}")
+        drivers_en.append(f"scale {kg_en} kg/year × {sm_low:.2f}–{sm_high:.2f}")
     steps_in = process_input.get("number_of_steps")
     if isinstance(steps_in, int) and stm != 1.0:
-        drivers_de.append(f"{steps_in} Schritte × {stm:.2f}")
+        _stm_de = f"{stm:.2f}".replace(".", ",")
+        drivers_de.append(f"{steps_in} Schritte × {_stm_de}")
         drivers_en.append(f"{steps_in} steps × {stm:.2f}")
     eur_in = process_input.get("raw_material_cost_eur_per_kg")
     if isinstance(eur_in, (int, float)) and rmm != 1.0:
-        drivers_de.append(f"Rohstoff {float(eur_in):.0f} €/kg × {rmm:.2f}")
-        drivers_en.append(f"raw material {float(eur_in):.0f} €/kg × {rmm:.2f}")
+        _eur_int = int(round(float(eur_in)))
+        _eur_de = f"{_eur_int:,}".replace(",", ".")
+        _eur_en = f"{_eur_int:,}"
+        _rmm_de = f"{rmm:.2f}".replace(".", ",")
+        drivers_de.append(f"Rohstoff {_eur_de} €/kg × {_rmm_de}")
+        drivers_en.append(f"raw material {_eur_en} €/kg × {rmm:.2f}")
 
     notes_de = f"Referenz: {anchor['anchor_de']}."
     notes_en = f"Reference: {anchor['anchor_en']}."
@@ -477,16 +500,27 @@ def _unknown_result(reason: str) -> Dict[str, Any]:
 
 
 def format_cogs_range(result: Dict[str, Any], lang: str = "de") -> Optional[str]:
-    """Format the range as 'low – high €/kg' or None if unavailable."""
+    """Format the range as 'low – high €/kg' or None if unavailable.
+
+    Bug E6 fix: consistent locale-aware number formatting. German uses
+    point as thousands separator and comma as decimal; English uses
+    comma as thousands and point as decimal.
+    """
     lo = result.get("low_eur_per_kg")
     hi = result.get("high_eur_per_kg")
     if lo is None or hi is None:
         return None
-    # Round to 2 sig figs for human readability
-    def _fmt(x: float) -> str:
+    def _fmt_de(x: float) -> str:
         if x >= 1000:
             return f"{x:,.0f}".replace(",", ".")
         if x >= 10:
             return f"{x:.0f}"
+        return f"{x:.1f}".replace(".", ",")
+    def _fmt_en(x: float) -> str:
+        if x >= 1000:
+            return f"{x:,.0f}"
+        if x >= 10:
+            return f"{x:.0f}"
         return f"{x:.1f}"
+    _fmt = _fmt_en if lang == "en" else _fmt_de
     return f"{_fmt(lo)} – {_fmt(hi)} €/kg"

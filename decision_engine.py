@@ -1589,13 +1589,38 @@ class DecisionEngine:
                     efficiencyScore = max(0, min(10, efficiencyScore if isinstance(efficiencyScore, (int, float)) else 10))
 
                 # Baseline risk for biomolecules (STEP 7)
+                # Bug C2 fix: pauschal +3 for every protein was wrong —
+                # mAbs/recombinant therapeutics ARE high-risk biologics
+                # (folding, glycosylation, sterility, immunogenicity) but
+                # industrial enzymes like CALB / Novozyme 435 are well
+                # established commodities with much lower process risk.
+                # Similarly cyclic peptides (NRPS, multi-stage) are higher
+                # risk than short linear SPPS peptides.
                 try:
-                    if molecule_type == "peptide":
-                        riskScore += 2
-                        risk_breakdown["biophysical"] = risk_breakdown.get("biophysical", 0) + 2
-                    if molecule_type == "protein":
-                        riskScore += 3
-                        risk_breakdown["biophysical"] = risk_breakdown.get("biophysical", 0) + 3
+                    mtype = molecule_type
+                    msub = (p.get("molecule_subtype") or "").lower()
+                    if mtype == "peptide":
+                        if msub == "cyclic":
+                            riskScore += 2
+                            risk_breakdown["biophysical"] = risk_breakdown.get("biophysical", 0) + 2
+                        else:  # linear or other
+                            riskScore += 1
+                            risk_breakdown["biophysical"] = risk_breakdown.get("biophysical", 0) + 1
+                    if mtype == "protein":
+                        if msub == "antibody":
+                            # mAbs: full folding/PTM/sterility risk profile
+                            riskScore += 3
+                            risk_breakdown["biophysical"] = risk_breakdown.get("biophysical", 0) + 3
+                        elif msub == "enzyme":
+                            # Industrial enzymes (CALB, amylases, etc.) are
+                            # well-established commodities — keep a small
+                            # protein baseline only.
+                            riskScore += 1
+                            risk_breakdown["biophysical"] = risk_breakdown.get("biophysical", 0) + 1
+                        else:
+                            # other recombinant proteins: somewhere between
+                            riskScore += 2
+                            risk_breakdown["biophysical"] = risk_breakdown.get("biophysical", 0) + 2
                 except Exception:
                     pass
 
@@ -1760,11 +1785,42 @@ class DecisionEngine:
                     issues.append("Extremely challenging purification expected")
 
             # Step 6: Toxicity logic
+            # Bug E1 + E2 fix: the "toxicity" column actually summarises
+            # *Stoff- & QC-Risiko* (substance handling + QC containment).
+            # The pauschal +1 for industrial scale was wrong both ways:
+            #   - Pushed Ethanol (Bulk Trinkalkohol) to "Erhöhte Containment"
+            #   - Left Trastuzumab (mAb biologic) only at "Standard-API"
+            # Use subtype-specific baselines instead, then keep the
+            # process modifiers as small adjustments.
             tox_order = {"low": 0, "medium": 1, "high": 2, "very high": 3}
-            tox_level = tox_order.get(properties.get("base_toxicity", "medium"), 1)
-            if method == "chemical" and steps > 5:
-                tox_level = min(tox_level + 1, 3)
-            if scale == "industrial":
+            _msub = (p.get("molecule_subtype") or "").lower()
+            _mtype = molecule_type
+            # Subtype-specific containment baseline (overrides generic
+            # base_toxicity for the QC/containment dimension):
+            if _mtype == "small_molecule" and _msub == "volatile":
+                # Bulk solvents (Ethanol, Acetone, IPA): standard lab
+                # handling. Even at industrial scale, no special
+                # containment needed beyond fire/explosion safety.
+                tox_level = 0  # "low"
+            elif _msub == "antibody" or (_mtype == "protein" and _msub in ("antibody", "recombinant_therapeutic")):
+                # mAbs / biologics: GMP-class sterile production,
+                # endotoxin limits, virus inactivation — high containment.
+                tox_level = 2  # "high"
+            elif _mtype == "peptide" and _msub == "linear":
+                # SPPS peptides: standard API handling, no special toxicity
+                tox_level = 1  # "medium"
+            elif _mtype == "peptide" and _msub == "cyclic":
+                # NRPS-derived cyclic peptides (Cyclosporine class): GMP,
+                # but no biologic-level containment
+                tox_level = 1  # "medium"
+            else:
+                tox_level = tox_order.get(properties.get("base_toxicity", "medium"), 1)
+
+            # Process modifiers (smaller — they tweak the subtype baseline,
+            # not override it). Skip the step-count bump for peptide
+            # chemistries because SPPS routinely uses 15–30 couplings;
+            # those aren't toxicology-relevant step-counts.
+            if method == "chemical" and steps > 8 and _mtype not in ("peptide",):
                 tox_level = min(tox_level + 1, 3)
             if strict_waste:
                 issues.append("Process may conflict with waste regulations")
@@ -2019,7 +2075,12 @@ class DecisionEngine:
                         downstreamInsights.append("Protein downstreams require chromatography-based capture and polishing; ensure robust column regeneration and buffer systems")
 
                 # Natural products: mixtures requiring selective separation
-                elif molecule_type == "natural_product":
+                # Bug E3 fix: only fire this hint when the chosen METHOD is
+                # actually extraction. For chemical synthesis of a natural
+                # product (e.g. Caffeine via Traube synthesis) the route
+                # yields defined intermediates — no "complex mixture" of
+                # natural-product origin.
+                elif molecule_type == "natural_product" and method in ("extraction", "extract", "extraction-based"):
                     if "Develop selective extraction and fractionation followed by targeted chromatography" not in improvements:
                         improvements.append("Develop selective extraction and fractionation followed by targeted chromatography and consider TR/GC for terpenes")
                     downstreamInsights.append("Natural products often require selective extraction, fractionation and targeted chromatographic separation due to complex mixtures")
@@ -2045,7 +2106,13 @@ class DecisionEngine:
                 savingsPotential = savingsPotential if savingsPotential == "high" else "medium"
 
             def impact_label(level: str) -> str:
-                return str(level).upper()
+                # Bug E5 fix: produce mixed-case labels so the downstream
+                # translator doesn't render "HIGH" / "MEDIUM" / "LOW" as
+                # rogue uppercase tokens in the report.
+                return {"HIGH": "hoch", "MEDIUM": "mittel", "LOW": "niedrig",
+                        "high": "hoch", "medium": "mittel", "low": "niedrig"}.get(
+                    str(level), str(level).lower()
+                )
 
             if steps > 5:
                 improvements.append(f"Reduce number of synthesis steps to improve efficiency and lower cost → Potential cost reduction: {impact_label('HIGH')}")
@@ -2565,9 +2632,34 @@ class DecisionEngine:
                                 # Otherwise drop the topic entirely — no false alarm
                                 pass
                         elif t == 'aggregation':
-                            merged.append('High aggregation risk reduces yield and increases polishing and formulation costs')
+                            # Bug C2 fix: only flag aggregation risk when the
+                            # user actually marked it high. For industrial
+                            # enzymes the default profile triggers the topic
+                            # via SMILES heuristics, even when the molecule
+                            # is established and stable (CALB, amylases).
+                            _agg_real = (p.get("aggregation_risk") or "").lower()
+                            _is_enzyme = (
+                                (p.get("molecule_type") or "").lower() == "protein"
+                                and (p.get("molecule_subtype") or "").lower() == "enzyme"
+                            )
+                            if _agg_real == "high":
+                                merged.append('High aggregation risk reduces yield and increases polishing and formulation costs')
+                            elif not _is_enzyme:
+                                merged.append('High aggregation risk reduces yield and increases polishing and formulation costs')
+                            # else: suppress for industrial enzymes without explicit agg_risk=high
                         elif t == 'stability':
-                            merged.append('Low biophysical stability increases degradation during processing and reduces batch recovery')
+                            # Bug C2 fix: analogous to aggregation — industrial
+                            # enzymes are commodity-stable; suppress generic
+                            # "low stability" unless explicitly marked.
+                            _bst_real = (p.get("biophysical_stability") or "").lower()
+                            _is_enzyme = (
+                                (p.get("molecule_type") or "").lower() == "protein"
+                                and (p.get("molecule_subtype") or "").lower() == "enzyme"
+                            )
+                            if _bst_real == "low":
+                                merged.append('Low biophysical stability increases degradation during processing and reduces batch recovery')
+                            elif not _is_enzyme:
+                                merged.append('Low biophysical stability increases degradation during processing and reduces batch recovery')
                         elif t == 'folding':
                             merged.append('Complex folding increases sensitivity to process conditions and raises development and refolding costs')
                         elif t == 'solvent':
@@ -2752,6 +2844,29 @@ class DecisionEngine:
             # Normalize improvement phrasing (remove arrows and make short)
             try:
                 dedup_impr = [s.replace('→', '-').replace('Potential cost reduction', 'Expected cost reduction') for s in dedup_impr]
+            except Exception:
+                pass
+
+            # Bug C2 fix: efficiency / risk consistency cap.
+            # A "Robust" efficiency (≥ 8) cannot coexist with "very high" or
+            # "high" risk — that's semantically impossible (a robust process
+            # is by definition NOT high-risk). When the engine ends up with
+            # such a combination (often because protein-baseline bumps stack
+            # on a low-complexity industrial enzyme), cap the risk down by
+            # one or two bands so the report reads consistently.
+            try:
+                _level_rank = {"low": 0, "medium": 1, "high": 2, "very high": 3}
+                _rank_to_label = {v: k for k, v in _level_rank.items()}
+                _eff_score_int = int(round(efficiencyScore))
+                _risk_rank = _level_rank.get(risk, 1)
+                if _eff_score_int >= 9 and _risk_rank > 1:
+                    # Best-in-class efficiency ↔ risk cap at medium
+                    risk = _rank_to_label[1]
+                    riskScore = min(riskScore, 5)
+                elif _eff_score_int >= 8 and _risk_rank > 2:
+                    # Robust efficiency ↔ risk cap at high
+                    risk = _rank_to_label[2]
+                    riskScore = min(riskScore, 7)
             except Exception:
                 pass
 
