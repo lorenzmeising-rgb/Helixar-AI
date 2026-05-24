@@ -40,6 +40,8 @@ RULE_SOURCES = {
     "raw_material_legacy": "ICH Q7 Good Manufacturing Practice Guide for APIs (Standard) — supplier qualification; Walsh G., Pharmaceutical Biotechnology, 2nd ed. 2018, Wiley (ISBN 978-1-119-11518-7)",
     "edukt_substitution": "Sheldon, Green Chem. 2017 — E-factor (doi:10.1039/C7GC00149E); Anastas & Warner, Green Chemistry: Theory and Practice, Oxford Univ. Press 1998 (ISBN 978-0-19-850698-0)",
     "volatile_distillation_energy": "Kiss A.A., Advanced Distillation Technologies, Wiley 2013 (ISBN 978-1-119-99361-9) — heat-integrated and divided-wall column design; Vane LM., Sep. Purif. Technol. 2008 — Distillation/membrane hybrid separations for biofuels (doi:10.1016/j.seppur.2008.02.013); Huang K. et al., Chem. Eng. Process. 2008 — Heat-pump-assisted distillation (doi:10.1016/j.cep.2007.05.024)",
+    "peptide_spps_optimization": "Bray BL., Nat. Rev. Drug Discov. 2003 (doi:10.1038/nrd1133) — Large-scale SPPS economics; Albericio F., Curr. Opin. Chem. Biol. 2004 (doi:10.1016/j.cbpa.2004.03.002) — SPPS reagent and coupling strategy; Wegner J., Org. Process Res. Dev. 2018 (doi:10.1021/acs.oprd.7b00329) — Semi-synthetic peptide manufacturing",
+    "natural_product_extraction_intensification": "Newman & Cragg, J. Nat. Prod. 2020 (doi:10.1021/acs.jnatprod.9b01285) — Natural products in drug discovery; Reverchon E., J. Supercrit. Fluids 1997 (doi:10.1016/S0896-8446(97)00014-4) — Supercritical fluid extraction; Belwal T. et al., Trends Food Sci. Technol. 2018 (doi:10.1016/j.tifs.2018.07.015) — Green extraction techniques",
 }
 
 from typing import Dict, Any, List
@@ -610,6 +612,101 @@ ACTION_TEXTS = {
             ),
         },
     },
+    # Bug high_risk_no_actions fix: SPPS-peptide optimisation lever.
+    # Triggered for chemical-route peptides with ≥ 5 couplings.
+    "peptide_spps_optimization": {
+        "de": {
+            "title": "SPPS-Prozess optimieren (Coupling, Pseudoproline, semi-synthetisch)",
+            "rationale": (
+                "Bei {steps}-stufiger SPPS dominieren Fmoc-AS und Kupplungsreagenzien "
+                "(typ. 50–70 % der Materialkosten). Hebel: HATU/COMU statt HBTU für "
+                "schwierige Sequenzen, Pseudoproline-Dipeptide für aggregations-anfällige "
+                "Bereiche, gemischte Anhydrid-Methoden für teure AS. Für sehr lange "
+                "Peptide (> 25 AS) Wechsel auf semi-synthetisch (rekombinantes Backbone "
+                "+ chemische Acylierung) prüfen — verschiebt das Kostenprofil deutlich."
+            ),
+            "expected_impact": (
+                "Materialkostenreduktion 15–40 % bei reiner SPPS-Optimierung; "
+                "bei Wechsel auf semi-synthetisch typ. 5–10× günstiger pro kg API "
+                "für lipidierte / glykosylierte Peptide."
+            ),
+            "prerequisites": (
+                "Kupplungs-Effizienz pro Position prüfen (LC-MS-Tracking); "
+                "Pseudoproline-Screening; Bei semi-synthetisch: Expression-System "
+                "(E. coli / Hefe) für das ungeschützte Backbone evaluieren."
+            ),
+        },
+        "en": {
+            "title": "Optimise SPPS process (coupling, pseudoprolines, semi-synthesis)",
+            "rationale": (
+                "For {steps}-step SPPS, Fmoc-AAs and coupling reagents dominate cost "
+                "(typically 50–70 % of materials). Levers: HATU/COMU instead of HBTU "
+                "for difficult sequences, pseudoproline dipeptides for aggregation-"
+                "prone segments, mixed-anhydride methods for expensive AAs. For very "
+                "long peptides (> 25 AAs) consider switching to semi-synthetic "
+                "(recombinant backbone + chemical acylation) — significantly shifts "
+                "the cost profile."
+            ),
+            "expected_impact": (
+                "Materials cost reduction 15–40 % from pure SPPS optimisation; "
+                "switching to semi-synthetic typically 5–10× cheaper per kg API "
+                "for lipidated / glycosylated peptides."
+            ),
+            "prerequisites": (
+                "Position-wise coupling efficiency check (LC-MS tracking); "
+                "pseudoproline screening; for semi-synthesis: evaluate expression "
+                "system (E. coli / yeast) for the unprotected backbone."
+            ),
+        },
+    },
+    # Bug high_risk_no_actions fix: extraction-route natural-product
+    # intensification (solvent choice, scCO2, membrane concentration).
+    "natural_product_extraction_intensification": {
+        "de": {
+            "title": "Extraktion intensivieren (scCO2 / Membran / grüne Lösungsmittel)",
+            "rationale": (
+                "Bei Extraktions-Routen für {mname} dominiert das Lösungsmittel-Volumen "
+                "die Energie- und Compliance-Kosten. Hebel: Überkritisches CO2 (scCO2) "
+                "für lipophile Zielmoleküle (Astaxanthin, β-Carotin, Squalen) — höhere "
+                "Selektivität, kein Lösungsmittel-Rückstand. Für polare Zielmoleküle: "
+                "Hochdruck-Wasser oder grüne Lösungsmittel (Cyrene, EtOH/Wasser). "
+                "Membran-basierte Konzentration (Nanofiltration) statt Eindampfung "
+                "spart 30–60 % Energie."
+            ),
+            "expected_impact": (
+                "Extraktions-Ausbeute typ. 10–30 % Steigerung gegenüber konventioneller "
+                "Lösungsmittel-Extraktion; Energiebedarf 30–60 % geringer; "
+                "Compliance-Kosten durch Reduktion organischer Lösungsmittel deutlich "
+                "gesenkt."
+            ),
+            "prerequisites": (
+                "scCO2-Pilotanlage oder Auftragsdienst (CDMO mit SFE-Kapazität); "
+                "Lösungsmittel-Screening im Labormaßstab; Membran-Performance gegen "
+                "die spezifische Matrix qualifizieren."
+            ),
+        },
+        "en": {
+            "title": "Intensify extraction (scCO2 / membrane / green solvents)",
+            "rationale": (
+                "For extraction routes of {mname}, solvent volume dominates energy "
+                "and compliance cost. Levers: supercritical CO2 (scCO2) for lipophilic "
+                "targets (astaxanthin, β-carotene, squalene) — higher selectivity, "
+                "no solvent residue. For polar targets: pressurised water or green "
+                "solvents (Cyrene, EtOH/water). Membrane-based concentration "
+                "(nanofiltration) instead of evaporation saves 30–60 % energy."
+            ),
+            "expected_impact": (
+                "Extraction yield typically up 10–30 % vs. conventional solvent "
+                "extraction; energy demand 30–60 % lower; compliance cost reduced "
+                "by minimising organic solvents."
+            ),
+            "prerequisites": (
+                "scCO2 pilot plant or CDMO with SFE capacity; lab-scale solvent "
+                "screening; membrane performance qualified against the specific "
+                "feed matrix."
+            ),
+        },
+    },
 }
 
 
@@ -1127,6 +1224,45 @@ def _rule_biotech_titer_optimization(p: Dict[str, Any], lang: str) -> List[Dict[
     return out
 
 
+def _rule_peptide_spps_optimization(p: Dict[str, Any], lang: str) -> List[Dict[str, Any]]:
+    """SPPS-peptide optimisation lever (coupling, pseudoprolines,
+    semi-synthesis). Fires for chemical-route peptides with ≥ 5 couplings —
+    fills the gap that left Met-enkephalin / Liraglutide / Insulin etc.
+    with risk=high but no recommended_actions after the K1 refactor.
+    """
+    mtype = (p.get("molecule_type") or "").lower()
+    method = (p.get("method") or "").lower()
+    steps = p.get("number_of_steps") or 0
+    if mtype != "peptide":
+        return []
+    if method not in ("chemical", "chem", "chemical synthesis"):
+        return []
+    try:
+        if int(steps) < 5:
+            return []
+    except Exception:
+        return []
+    return [_make("peptide_spps_optimization", lang, effort="medium",
+                  current_state="", optimized_state="", steps=int(steps))]
+
+
+def _rule_natural_product_extraction_intensification(p: Dict[str, Any], lang: str) -> List[Dict[str, Any]]:
+    """Natural-product extraction intensification (scCO2, membrane,
+    green solvents). Fires for extraction-route natural products —
+    fills the gap that left Astaxanthin / β-Carotene / Squalene /
+    Artemisinin with risk=high but no recommended_actions.
+    """
+    mtype = (p.get("molecule_type") or "").lower()
+    method = (p.get("method") or "").lower()
+    if mtype != "natural_product":
+        return []
+    if method not in ("extraction", "extract", "extraction-based"):
+        return []
+    mname = p.get("molecule_name") or ("dieses Naturprodukt" if lang == "de" else "this natural product")
+    return [_make("natural_product_extraction_intensification", lang, effort="medium",
+                  current_state="", optimized_state="", mname=mname)]
+
+
 def _rule_volatile_distillation_energy(p: Dict[str, Any], lang: str) -> List[Dict[str, Any]]:
     """Bug F1 fix: volatile small molecules ended up with risk=high after K1
     but no rule fired (refolding/PTM/biotech-switch all gated by type). For
@@ -1166,6 +1302,12 @@ def build_recommended_actions(process_input: Dict[str, Any], lang: str = "de") -
         _rule_biotech_titer_optimization,
         # Bug F1 fix: catch-all for volatile small molecules
         _rule_volatile_distillation_energy,
+        # high_risk_no_actions fix: SPPS-peptides + natural-product
+        # extractions used to end up with risk=high but empty actions
+        # list. These two rules close that gap with concrete, source-
+        # backed optimisation levers.
+        _rule_peptide_spps_optimization,
+        _rule_natural_product_extraction_intensification,
     ):
         try:
             actions.extend(rule(process_input, lang))
