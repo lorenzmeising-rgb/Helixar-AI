@@ -1134,6 +1134,144 @@ def show_report_page():
             if ptm_flag is not None:
                 col_k.metric(t("metric_ptm"), t("yes") if ptm_flag else t("no"))
 
+    # -------------------------------------------------------------------
+    # Feature D — What-if Sensitivity Analysis
+    # -------------------------------------------------------------------
+    # Process Scientists want to test "what if I push purity up?" or
+    # "what if I scale 10x?" without re-running the whole analysis.
+    # An expandable panel shows three sliders (scale, purity, raw-material
+    # price) and a live-updated COGS-range plot + tile.
+    if ip:
+        st.markdown("---")
+        with st.expander(t("sensitivity_section_title"), expanded=False):
+            st.caption(t("sensitivity_section_caption"))
+
+            try:
+                from cogs_estimator import estimate_cogs as _est_sens, format_cogs_range as _fmt_sens
+            except Exception:
+                _est_sens = None
+                _fmt_sens = None
+
+            if _est_sens is None:
+                st.warning(t("sensitivity_not_available"))
+            else:
+                # Defaults from the user's original inputs
+                orig_kg = float(ip.get("scale_kg_per_year") or 100.0)
+                orig_pct = float(ip.get("desired_purity_percent") or 99.0)
+                orig_eur = float(ip.get("raw_material_cost_eur_per_kg") or 50.0)
+
+                col_s1, col_s2, col_s3 = st.columns(3)
+                with col_s1:
+                    # Log-scale slider for scale — sliders work on a
+                    # log10-axis under the hood so users can sweep across
+                    # 5+ orders of magnitude in a single drag.
+                    log_kg = st.slider(
+                        t("sensitivity_scale_label"),
+                        min_value=-3.0, max_value=6.0,
+                        value=max(-3.0, min(6.0, __import__("math").log10(max(orig_kg, 1e-3)))),
+                        step=0.1,
+                        format="%.1f",
+                        key="sens_log_kg",
+                        help=t("sensitivity_scale_help"),
+                    )
+                    new_kg = 10.0 ** log_kg
+                    st.caption(f"≈ {new_kg:,.1f} {t('kg_per_year')}".replace(",", "."))
+                with col_s2:
+                    new_pct = st.slider(
+                        t("sensitivity_purity_label"),
+                        min_value=80.0, max_value=99.99,
+                        value=float(orig_pct), step=0.1,
+                        format="%.2f",
+                        key="sens_pct",
+                        help=t("sensitivity_purity_help"),
+                    )
+                with col_s3:
+                    new_eur = st.slider(
+                        t("sensitivity_rm_label"),
+                        min_value=1.0,
+                        max_value=max(10000.0, orig_eur * 3.0),
+                        value=float(orig_eur),
+                        step=max(1.0, orig_eur * 0.05),
+                        format="%.0f",
+                        key="sens_eur",
+                        help=t("sensitivity_rm_help"),
+                    )
+
+                # Build a counterfactual process_input
+                pi_alt = dict(ip)
+                pi_alt["scale_kg_per_year"] = new_kg
+                pi_alt["desired_purity_percent"] = new_pct
+                pi_alt["raw_material_cost_eur_per_kg"] = new_eur
+
+                # Run COGS in the new state
+                try:
+                    cogs_alt = _est_sens(pi_alt) or {}
+                except Exception:
+                    cogs_alt = {}
+                lo_alt = cogs_alt.get("low_eur_per_kg")
+                hi_alt = cogs_alt.get("high_eur_per_kg")
+
+                # Comparison metrics next to the original COGS
+                try:
+                    cogs_orig = _est_sens(ip) or {}
+                except Exception:
+                    cogs_orig = {}
+                lo_o = cogs_orig.get("low_eur_per_kg") or 0
+                hi_o = cogs_orig.get("high_eur_per_kg") or 0
+
+                col_m1, col_m2 = st.columns(2)
+                with col_m1:
+                    st.markdown(f"**{t('sensitivity_original_label')}**")
+                    st.metric(
+                        "COGS",
+                        _fmt_sens(cogs_orig, lang=st.session_state.ui_lang) if _fmt_sens else f"{lo_o:.1f}–{hi_o:.1f} €/kg",
+                    )
+                with col_m2:
+                    st.markdown(f"**{t('sensitivity_simulated_label')}**")
+                    delta_hi = (hi_alt - hi_o) if (hi_alt is not None and hi_o) else None
+                    st.metric(
+                        "COGS",
+                        _fmt_sens(cogs_alt, lang=st.session_state.ui_lang) if _fmt_sens else (
+                            f"{lo_alt:.1f}–{hi_alt:.1f} €/kg" if lo_alt is not None else "—"
+                        ),
+                        delta=(f"{delta_hi:+.0f} €/kg (upper)" if delta_hi is not None else None),
+                        delta_color="inverse",
+                    )
+
+                # Live COGS-vs-Scale plot — gives the user a feel for the
+                # scale-economy curve in this specific process.
+                try:
+                    import math as _math
+                    sample_scales = [10 ** (i * 0.5 - 2) for i in range(0, 17)]  # 0.01 → 10^6
+                    rows = []
+                    for s in sample_scales:
+                        pi_s = dict(pi_alt)
+                        pi_s["scale_kg_per_year"] = s
+                        try:
+                            cs = _est_sens(pi_s) or {}
+                            rows.append({
+                                "Skala (kg/Jahr)": s,
+                                "COGS low": cs.get("low_eur_per_kg"),
+                                "COGS high": cs.get("high_eur_per_kg"),
+                            })
+                        except Exception:
+                            pass
+                    if rows:
+                        import pandas as _pd
+                        df_plot = _pd.DataFrame(rows).set_index("Skala (kg/Jahr)")
+                        st.markdown(f"**{t('sensitivity_chart_title')}**")
+                        st.line_chart(df_plot, height=240)
+                        st.caption(t("sensitivity_chart_caption"))
+                except Exception:
+                    pass
+
+                if st.button(t("sensitivity_reset_button"), key="sens_reset"):
+                    # Force-reset to original values by clearing the keys
+                    # and letting Streamlit re-render.
+                    for _k in ("sens_log_kg", "sens_pct", "sens_eur"):
+                        st.session_state.pop(_k, None)
+                    st.rerun()
+
     # ----- Structure analysis (RDKit, when SMILES available) -----
     smiles_for_render = ip.get("smiles")
     rdkit_props = None

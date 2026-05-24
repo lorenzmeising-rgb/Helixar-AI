@@ -433,6 +433,63 @@ TRANSLATIONS = {
         "en": "Successfully generated production recommendation for {compound}",
     },
     "your_inputs_header": {"de": "Ihre Eingaben", "en": "Your inputs"},
+    # Feature D — what-if sensitivity panel labels
+    "sensitivity_section_title": {
+        "de": "🎚 Was-wäre-wenn: Sensitivitäts-Analyse",
+        "en": "🎚 What-if: Sensitivity analysis",
+    },
+    "sensitivity_section_caption": {
+        "de": "Verschieben Sie Skala, Reinheit oder Rohstoffpreis und sehen Sie sofort, wie sich die COGS-Schätzung verändert. Das Modell rechnet live — kein neuer PDF-Lauf nötig.",
+        "en": "Move scale, purity or raw-material price and watch the COGS estimate update live. The model recomputes on the fly — no new PDF run needed.",
+    },
+    "sensitivity_not_available": {
+        "de": "Sensitivitäts-Modul nicht verfügbar (cogs_estimator konnte nicht geladen werden).",
+        "en": "Sensitivity module unavailable (cogs_estimator could not be loaded).",
+    },
+    "sensitivity_scale_label": {
+        "de": "Skala (log10 kg/Jahr)",
+        "en": "Scale (log10 kg/year)",
+    },
+    "sensitivity_scale_help": {
+        "de": "Slider arbeitet logarithmisch: −3 = 1 g/Jahr, 0 = 1 kg/Jahr, 3 = 1 t/Jahr, 6 = 1 000 t/Jahr.",
+        "en": "Slider is log-scale: −3 = 1 g/year, 0 = 1 kg/year, 3 = 1 t/year, 6 = 1 000 t/year.",
+    },
+    "sensitivity_purity_label": {
+        "de": "Zielreinheit (%)",
+        "en": "Target purity (%)",
+    },
+    "sensitivity_purity_help": {
+        "de": "Höhere Reinheit erhöht typ. die Aufreinigungskosten (×1,15 bei 99 %, ×1,3 bei 99,5 %, ×1,6 bei 99,9 %).",
+        "en": "Higher purity typically increases purification cost (×1.15 at 99 %, ×1.3 at 99.5 %, ×1.6 at 99.9 %).",
+    },
+    "sensitivity_rm_label": {
+        "de": "Rohstoffpreis (€/kg)",
+        "en": "Raw-material price (€/kg)",
+    },
+    "sensitivity_rm_help": {
+        "de": "Bei Rohstoff-Anteil ≥30 % der COGS schlägt eine 20 %-Preisänderung mit ≈6–10 % auf die Stückkosten durch.",
+        "en": "If raw materials are ≥ 30 % of COGS, a 20 % price change translates to ≈ 6–10 % on unit cost.",
+    },
+    "sensitivity_original_label": {
+        "de": "Original-Eingabe",
+        "en": "Original input",
+    },
+    "sensitivity_simulated_label": {
+        "de": "Simuliert",
+        "en": "Simulated",
+    },
+    "sensitivity_chart_title": {
+        "de": "COGS-Sensitivität gegenüber Skala",
+        "en": "COGS sensitivity vs. scale",
+    },
+    "sensitivity_chart_caption": {
+        "de": "Linke Y-Achse: COGS-Bandbreite (€/kg). X-Achse: Jahres-Maßstab in kg, logarithmisch.",
+        "en": "Left Y-axis: COGS range (€/kg). X-axis: annual scale in kg, log scale.",
+    },
+    "sensitivity_reset_button": {
+        "de": "🔄 Zurück zu Original-Eingabe",
+        "en": "🔄 Reset to original input",
+    },
     "metric_purity": {"de": "Zielreinheit", "en": "Target purity"},
     "metric_scale": {"de": "Zielmaßstab", "en": "Target scale"},
     "metric_cost": {"de": "Marktpreis Edukte", "en": "Raw-material price"},
