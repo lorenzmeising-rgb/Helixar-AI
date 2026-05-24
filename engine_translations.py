@@ -163,8 +163,12 @@ _PHRASE_RULES = [
      r"Höhere Reinheitsziele erhöhen Aufreinigungskosten und Prozesskomplexität"),
 
     # ---- Raw-material / cost issues ----
+    # Bug W2 fix: turn the passive problem-statement into an actionable
+    # improvement when this string is rendered in the Empfehlungen
+    # section. The DE wording is now active (qualify / evaluate /
+    # implement) so it reads as a recommendation, not a complaint.
     (r"^Expensive or scarce starting materials increase COGS and procurement risk.*$",
-     r"Teure oder knappe Rohstoffe erhöhen die Herstellkosten (COGS) und das Beschaffungsrisiko"),
+     r"Alternative Lieferanten qualifizieren, Substrat-Recycling und langfristige Abnahme-Verträge prüfen, um Rohstoffabhängigkeit und COGS zu reduzieren"),
     (r"^Expensive raw materials drive up unit cost.*$",
      r"Teure Rohstoffe treiben die Stückkosten in die Höhe"),
     (r"^Raw material shortages or single-source supply.*$",
@@ -186,6 +190,9 @@ _PHRASE_RULES = [
     # Engine emits both "operational complexity" and "operational costs (reagents, labour, unit ops)":
     (r"^Multiple synthesis steps \((\d+)\) increase operational costs \(reagents, labour, unit ops\).*$",
      r"Mehrstufige Synthese (\1 Schritte) erhöht die Betriebskosten (Reagenzien, Personal, Unit-Operations)"),
+    # Bug W9 fix: parallel rule for biotech / unit-operations wording
+    (r"^Multi-stage process \((\d+) unit operations\) increases operational costs \(reagents, labour, USP/DSP\).*$",
+     r"Mehrstufiger Bioprozess (\1 Unit-Operations) erhöht Betriebskosten (Medien, Personal, USP/DSP)"),
     (r"^Multiple synthesis steps increase operational complexity.*$",
      r"Mehrstufige Synthese erhöht die operative Komplexität"),
     (r"^Many synthesis steps drive up reagent and labour costs.*$",
@@ -306,6 +313,10 @@ _PHRASE_RULES = [
      r"Prozesskontrolle verbessern (robuste pH-/Temperatur-Regelung, Inline-Monitoring) und kritische Unit-Operations vereinfachen, um Fehlerquellen zu reduzieren — Erwartete Kosten-Reduzierung: mittel"),
     (r"^Switch to less toxic reagents or reduce hazardous waste streams.*$",
      r"Auf weniger toxische Reagenzien umsteigen oder gefährliche Abfallströme reduzieren — Erwartete Kosten-Reduzierung: mittel"),
+    # Bug W8 fix: mAb-specific equivalent (single-use bioreactors,
+    # continuous capture) instead of "less toxic reagents".
+    (r"^Evaluate single-use bioreactors and continuous capture \(Protein-A membrane\) to reduce buffer consumption.*$",
+     r"Single-Use-Bioreaktoren und kontinuierliches Protein-A-Capture (Membran-basiert) prüfen, um Puffer- und CIP-Aufwand zu reduzieren — Erwartete Kosten-Reduzierung: mittel"),
 
     # ---- Bug H7 i18n fix: English engine strings flagged by deep audit ----
     (r"^Distillation likely feasible due to volatility; consider azeotrope management and reflux optimization\.?$",

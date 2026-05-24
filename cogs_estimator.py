@@ -422,8 +422,13 @@ def estimate_cogs(process_input: Dict[str, Any]) -> Dict[str, Any]:
     drivers_de: List[str] = []
     drivers_en: List[str] = []
     pct_in = process_input.get("desired_purity_percent")
-    if isinstance(pct_in, (int, float)) and float(pct_in) >= 99.0:
-        # Locale-aware decimals (Bug E6)
+    # Bug W5 fix: previously only fired at ≥ 99 % purity, which caused
+    # PDFs at 95 % (e.g. Linalool) to silently drop the purity modifier
+    # from the list — readers couldn't tell whether the modifier had
+    # applied or not. Now ALWAYS list the purity modifier so the chain
+    # is fully transparent (× 1.00 is shown explicitly at standard
+    # purity).
+    if isinstance(pct_in, (int, float)):
         _pct_de = f"{float(pct_in):.1f}".replace(".", ",")
         _pm_de = f"{pm:.2f}".replace(".", ",")
         drivers_de.append(f"Reinheit {_pct_de} % × {_pm_de}")

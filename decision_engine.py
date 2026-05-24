@@ -1738,6 +1738,24 @@ class DecisionEngine:
                 elif process_class == "natural_product_complex":
                     costScore += 1
                     riskScore += 1
+                # Bug W3 fix: established terpene commodities (Linalool,
+                # Citral, Limonene, Geraniol, α-Pinene) produced via
+                # extraction or semi-synthesis are well-developed
+                # industrial routes — apply a small risk reduction
+                # rather than the generic "natural product" bump.
+                _mname_lc = str(p.get("molecule_name") or "").lower()
+                _msub_lc = str(p.get("molecule_subtype") or "").lower()
+                _mtype_lc = molecule_type
+                if (_mtype_lc == "natural_product" and _msub_lc == "terpene"
+                        and method in ("extraction", "extract", "extraction-based",
+                                       "chemical", "chemical synthesis", "chem")):
+                    commodity_terpenes = {
+                        "linalool", "citral", "limonene", "geraniol",
+                        "α-pinene", "alpha-pinene", "menthol",
+                    }
+                    if _mname_lc in commodity_terpenes:
+                        riskScore = max(0, riskScore - 2)
+                        costScore = max(0, costScore - 1)
             except Exception:
                 pass
 
@@ -1987,9 +2005,16 @@ class DecisionEngine:
                     issues.append(msg)
                 costDrivers.append("Expensive raw materials (high COGS)")
 
-            # Add other cost drivers identified earlier with precise wording
+            # Add other cost drivers identified earlier with precise wording.
+            # Bug W9 fix: "synthesis steps" is wrong wording for biotech
+            # routes — those have unit operations (USP/DSP), not synthesis
+            # steps. Word-choice is subtype-aware.
             if steps > 5:
-                costDrivers.append(f"Multiple synthesis steps ({steps}) increase operational costs (reagents, labour, unit ops)")
+                _is_biotech = method in ("biotechnological", "biotech", "biotechnological synthesis")
+                if _is_biotech:
+                    costDrivers.append(f"Multi-stage process ({steps} unit operations) increases operational costs (reagents, labour, USP/DSP)")
+                else:
+                    costDrivers.append(f"Multiple synthesis steps ({steps}) increase operational costs (reagents, labour, unit ops)")
             if desired_purity in ("high", ">99%", "very high"):
                 costDrivers.append("Very high purity targets increase downstream separation cost (longer HPLC/extra polishing steps)")
             if properties.get("purification_difficulty") in ("high", "very high"):
@@ -2137,8 +2162,20 @@ class DecisionEngine:
             if risk == "high":
                 improvements.append(f"Implement process control improvements (robust pH/temperature control, inline monitoring) and simplify critical unit ops to reduce failure modes → Potential cost reduction: {impact_label('MEDIUM')}")
 
-            if strict_waste:
+            # Bug W8 fix: the "switch to less toxic reagents" recommendation
+            # is for chemical syntheses with hazardous reagents/solvents.
+            # mAb / biologic production runs in CDM media + standard
+            # buffers — there's no "hazardous reagent" to swap. Suppress
+            # the suggestion for biotech-produced biologics.
+            _is_biologic_biotech = (
+                molecule_type in ("protein",)
+                and method in ("biotechnological", "biotech", "biotechnological synthesis")
+            )
+            if strict_waste and not _is_biologic_biotech:
                 improvements.append(f"Switch to less toxic reagents or reduce hazardous waste streams → Potential cost reduction: {impact_label('MEDIUM')}")
+            elif strict_waste and _is_biologic_biotech:
+                # mAb-specific waste / sustainability angle
+                improvements.append(f"Evaluate single-use bioreactors and continuous capture (Protein-A membrane) to reduce buffer consumption → Potential cost reduction: {impact_label('MEDIUM')}")
 
             # --- Trade-off engine: combine structural properties with process inputs ---
             # Start with adjusted defaults
@@ -2216,6 +2253,29 @@ class DecisionEngine:
                 tradeoffs.append("Reducing steps may impact yield or product quality and requires route redesign")
             if properties.get("complexity") == "high":
                 tradeoffs.append("Simplifying structure or route may reduce cost but requires alternative synthesis strategies")
+
+            # Bug W6 fix: subtype-specific trade-offs so biologics get
+            # the multiple, domain-relevant trade-offs reviewers expect
+            # (titer vs. quality, cycle-time vs. aggregates, etc.) instead
+            # of just one generic "reduce steps" bullet.
+            _msub_for_tradeoffs = (p.get("molecule_subtype") or "").lower()
+            _mtype_for_tradeoffs = molecule_type
+            if _mtype_for_tradeoffs == "protein" and _msub_for_tradeoffs == "antibody":
+                tradeoffs.append("Higher CHO titer vs. glycosylation profile — push titer too hard and the glycoform distribution can shift outside specs")
+                tradeoffs.append("Shorter fed-batch cycle vs. aggregate level — early harvest reduces aggregates but cuts titer; balance via temperature shift timing")
+                tradeoffs.append("Single-use vs. stainless — single-use cuts CIP/validation cost but increases consumables and supply-chain dependency")
+            elif _mtype_for_tradeoffs == "protein" and _msub_for_tradeoffs == "enzyme":
+                tradeoffs.append("Activity per gram vs. stability — higher specific activity often correlates with lower thermal/solvent stability")
+                tradeoffs.append("Free enzyme vs. immobilised — immobilisation simplifies recovery but adds matrix cost and can reduce specific activity")
+            elif _mtype_for_tradeoffs == "peptide" and _msub_for_tradeoffs == "linear":
+                tradeoffs.append("Full SPPS vs. semi-synthetic (recombinant backbone + chemical acylation) — full SPPS is faster to develop but more expensive at scale")
+                tradeoffs.append("Coupling reagent (HBTU/HATU/COMU) vs. yield/cost — HATU is most efficient but most expensive; HBTU is the standard compromise")
+            elif _mtype_for_tradeoffs == "peptide" and _msub_for_tradeoffs == "cyclic":
+                tradeoffs.append("Native fermentation (NRPS) vs. semi-synthesis — fermentation is the only realistic route for non-proteinogenic AAs but has long strain-development cycles")
+                tradeoffs.append("Strain engineering vs. titer — strain improvement can multiply titer but requires 12–24 months of dedicated work")
+            elif _mtype_for_tradeoffs == "natural_product":
+                tradeoffs.append("Wild-collected vs. cultivated raw material — wild can give higher API content but introduces supply-chain and regulatory risk (e.g. CITES for some terpenes)")
+                tradeoffs.append("Solvent choice vs. yield — greener solvents (water, ethanol, scCO2) cut compliance cost but often reduce extraction yield")
 
             # Apply adjusted cost/risk back to main variables for final reporting
             cost = adjustedCost

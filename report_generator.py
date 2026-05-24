@@ -318,16 +318,18 @@ def export_report_pdf(
                               textColor=colors.HexColor(_BRAND_PRIMARY_HEX)))
     styles.add(ParagraphStyle(name="BodySmall", parent=styles["Normal"], fontSize=10, leading=14,
                               textColor=colors.HexColor(_BRAND_TEXT_HEX)))
-    # Bug B8 fix: dedicated style for explanation/sub-lines under a bullet.
-    # Rendered indented, italic, in muted grey — replaces the previous
-    # "→ explanation" lines that surfaced as "? explanation" when the
-    # arrow character was sanitised out for the CP1252 font.
+    # Bug B8 / W7 fix: dedicated style for explanation/sub-lines under a
+    # bullet. Rendered indented, italic, in muted grey — replaces the
+    # previous "→ explanation" lines that surfaced as "? explanation"
+    # when the arrow character was sanitised out for the CP1252 font.
+    # W7: deeper indent (22pt instead of 14pt) so the visual subordination
+    # is unambiguous.
     styles.add(ParagraphStyle(name="ExplanationIndent",
                               parent=styles["Normal"],
                               fontName="Helvetica-Oblique",
                               fontSize=9, leading=12,
-                              leftIndent=14,
-                              spaceAfter=2,
+                              leftIndent=22,
+                              spaceAfter=3,
                               textColor=colors.HexColor("#6B7B8A")))
     # Monospace style for SMILES representation
     styles.add(ParagraphStyle(name="Mono", parent=styles["Normal"], fontName="Courier", fontSize=10, leading=12,
@@ -827,7 +829,14 @@ def export_report_pdf(
         if mtype_ctx == "protein":
             return "Endotoxin-Kontrolle, Glykosylierungs-Konsistenz" if lang == "de" else "endotoxin control, glycosylation consistency"
         if mtype_ctx == "peptide":
-            return "Endotoxin-Spezifikation, Reinheit der Sequenz" if lang == "de" else "endotoxin specification, sequence purity"
+            # Bug W1 fix: "Endotoxin-Spezifikation" is mAb-specific. For
+            # SPPS / NRPS peptides the actual QC drivers are sequence
+            # integrity, purity (mismatched / truncated sequences) and
+            # impurity profile — endotoxin only matters for biotech
+            # peptides used parenterally.
+            return ("GMP-Reinheit, Sequenz-Integrität, Verunreinigungsprofil"
+                    if lang == "de"
+                    else "GMP purity, sequence integrity, impurity profile")
         # Solvent containment only when the synthesis is non-trivial — for a
         # 1-step esterification (Aspirin) the reagent profile is mild and
         # "Solvent-Containment" reads alarmist.
