@@ -279,6 +279,17 @@ def export_report_pdf(
                               textColor=colors.HexColor(_BRAND_PRIMARY_HEX)))
     styles.add(ParagraphStyle(name="BodySmall", parent=styles["Normal"], fontSize=10, leading=14,
                               textColor=colors.HexColor(_BRAND_TEXT_HEX)))
+    # Bug B8 fix: dedicated style for explanation/sub-lines under a bullet.
+    # Rendered indented, italic, in muted grey — replaces the previous
+    # "→ explanation" lines that surfaced as "? explanation" when the
+    # arrow character was sanitised out for the CP1252 font.
+    styles.add(ParagraphStyle(name="ExplanationIndent",
+                              parent=styles["Normal"],
+                              fontName="Helvetica-Oblique",
+                              fontSize=9, leading=12,
+                              leftIndent=14,
+                              spaceAfter=2,
+                              textColor=colors.HexColor("#6B7B8A")))
     # Monospace style for SMILES representation
     styles.add(ParagraphStyle(name="Mono", parent=styles["Normal"], fontName="Courier", fontSize=10, leading=12,
                               textColor=colors.HexColor(_BRAND_TEXT_HEX)))
@@ -322,49 +333,55 @@ def export_report_pdf(
     def _explain_issue_pair(issue: str):
         s = str(issue or "").strip()
         low = s.lower()
+        # Bug B8 fix: removed the leading "→ " arrow from the explanation
+        # strings. The arrow (U+2192) is outside CP1252 and was being
+        # replaced by "?" via the PDF unicode sanitiser, producing the
+        # "?-as-bullet" effect users complained about. Explanation lines
+        # are now rendered in italic + indent (see the renderer below).
         if "step" in low or "synth" in low:
-            reason = "→ Jede zusätzliche Syntheseschritt erhöht Kosten, Durchlaufzeit und Komplexität, reduziert die Effizienz."
+            reason = "Jede zusätzliche Syntheseschritt erhöht Kosten, Durchlaufzeit und Komplexität, reduziert die Effizienz."
         elif "purif" in low or "reinig" in low or "purificat" in low:
-            reason = "→ Hohe Reinigungsanforderungen treiben nachgelagerte Arbeit und Kosten; mindern Skalierbarkeit."
+            reason = "Hohe Reinigungsanforderungen treiben nachgelagerte Arbeit und Kosten; mindern Skalierbarkeit."
         elif "raw material" in low or "rohstoff" in low or "expensive" in low or "teuer" in low:
-            reason = "→ Teure Rohstoffe sind ein wiederkehrender Kostentreiber und beeinflussen die Stückkosten stark."
+            reason = "Teure Rohstoffe sind ein wiederkehrender Kostentreiber und beeinflussen die Stückkosten stark."
         elif "bioreactor" in low or "bioreaktor" in low:
-            reason = "→ Fehlende Bioreaktor-Infrastruktur schränkt biotechnologische Routen ein und führt zu kostspieligen Anpassungen."
+            reason = "Fehlende Bioreaktor-Infrastruktur schränkt biotechnologische Routen ein und führt zu kostspieligen Anpassungen."
         elif "waste" in low or "abfall" in low:
-            reason = "→ Strenge Abfallvorschriften erhöhen Compliance-Last und Betriebskosten, besonders bei gefährlichen Abfällen."
+            reason = "Strenge Abfallvorschriften erhöhen Compliance-Last und Betriebskosten, besonders bei gefährlichen Abfällen."
         elif "stability" in low or "stabil" in low:
-            reason = "→ Geringe Stabilität erhöht Ausfallrisiko beim Scale-up und treibt Entwicklungskosten."
+            reason = "Geringe Stabilität erhöht Ausfallrisiko beim Scale-up und treibt Entwicklungskosten."
         else:
-            reason = "→ Dieses Thema wirkt sich negativ auf Kosten, Risiko oder Skalierbarkeit aus und erfordert Untersuchung."
+            reason = "Dieses Thema wirkt sich negativ auf Kosten, Risiko oder Skalierbarkeit aus und erfordert Untersuchung."
         return s, reason
 
     def _explain_improvement(impr: str):
         s = str(impr or "").strip()
         low = s.lower()
+        # Bug B8 fix: arrows removed — see _explain_issue_pair above.
         if "reduce number" in low or "reduce the number" in low or "reduce number of" in low:
             action = "Reduzieren der Anzahl an Syntheseschritten"
-            impact = "→ Hohes Einsparpotenzial und bessere Skalierbarkeit"
-            reason = "→ Weniger Schritte verringern Materialeinsatz, Prozesszeit und Nachreinigung."
+            impact = "Hohes Einsparpotenzial und bessere Skalierbarkeit"
+            reason = "Weniger Schritte verringern Materialeinsatz, Prozesszeit und Nachreinigung."
         elif "crystall" in low or "crystalliz" in low or "purificat" in low:
             action = "Optimierung der Reinigung (z. B. Kristallisation)"
-            impact = "→ Mittleres Einsparpotenzial bei Aufreinigungskosten"
-            reason = "→ Alternative Methoden reduzieren Lösungsmittelverbrauch und erhöhen Durchsatz."
+            impact = "Mittleres Einsparpotenzial bei Aufreinigungskosten"
+            reason = "Alternative Methoden reduzieren Lösungsmittelverbrauch und erhöhen Durchsatz."
         elif "raw material" in low or "optimiz" in low or "sourcing" in low:
             action = "Optimierung der Rohstoffauswahl und Beschaffung"
-            impact = "→ Mittleres Einsparpotenzial auf Stückkosten"
-            reason = "→ Bessere Beschaffung reduziert wiederkehrende Materialkosten."
+            impact = "Mittleres Einsparpotenzial auf Stückkosten"
+            reason = "Bessere Beschaffung reduziert wiederkehrende Materialkosten."
         elif "stabil" in low or "process stability" in low:
             action = "Verbesserung der Prozessstabilität"
-            impact = "→ Mittleres Einsparpotenzial durch reduzierte Nacharbeit"
-            reason = "→ Stabilere Prozesse unterstützen Reproduzierbarkeit und Scale-up."
+            impact = "Mittleres Einsparpotenzial durch reduzierte Nacharbeit"
+            reason = "Stabilere Prozesse unterstützen Reproduzierbarkeit und Scale-up."
         elif "toxic" in low or "waste" in low or "hazard" in low:
             action = "Reduzieren von gefährlichen Reagenzien und Abfallströmen"
-            impact = "→ Mittleres Einsparpotenzial bei Compliance- und Entsorgungskosten"
-            reason = "→ Weniger gefährliche Chemikalien senken Behandlungskosten und regulatorischen Aufwand."
+            impact = "Mittleres Einsparpotenzial bei Compliance- und Entsorgungskosten"
+            reason = "Weniger gefährliche Chemikalien senken Behandlungskosten und regulatorischen Aufwand."
         else:
             action = s or "Empfohlene Maßnahme"
-            impact = "→ Erwarteter Effekt: Moderat"
-            reason = "→ Diese Maßnahme adressiert identifizierte Schwächen und sollte Prozesskennzahlen verbessern."
+            impact = "Erwarteter Effekt: Moderat"
+            reason = "Diese Maßnahme adressiert identifizierte Schwächen und sollte Prozesskennzahlen verbessern."
         return action, impact, reason
 
     # Resolve the brand logo once (picked up automatically when present in repo).
@@ -850,9 +867,11 @@ def export_report_pdf(
     if issues:
         for it in issues[:3]:
             prob, why = _explain_issue_pair(it)
-            # Translate the (possibly English) engine output before display.
+            # Bug B8 fix: bullet for the main statement, indented italic
+            # in muted grey for the explanation — replaces the
+            # "?" lines (formerly "→" arrows sanitised out).
             elems.append(Paragraph(f"• {TE(prob)}", normal))
-            elems.append(Paragraph(TE(why), normal))
+            elems.append(Paragraph(TE(why), styles["ExplanationIndent"]))
     else:
         elems.append(Paragraph(L("pdf_no_critical_issues"), normal))
     elems.append(Spacer(1, 10))
@@ -863,8 +882,8 @@ def export_report_pdf(
         for imp in imps[:5]:
             action, impact, reason = _explain_improvement(imp)
             elems.append(Paragraph(f"• {TE(action)}", normal))
-            elems.append(Paragraph(TE(impact), normal))
-            elems.append(Paragraph(TE(reason), normal))
+            elems.append(Paragraph(TE(impact), styles["ExplanationIndent"]))
+            elems.append(Paragraph(TE(reason), styles["ExplanationIndent"]))
     else:
         elems.append(Paragraph(L("pdf_no_improvements"), normal))
 
