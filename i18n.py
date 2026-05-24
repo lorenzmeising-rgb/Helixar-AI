@@ -433,6 +433,99 @@ TRANSLATIONS = {
         "en": "Successfully generated production recommendation for {compound}",
     },
     "your_inputs_header": {"de": "Ihre Eingaben", "en": "Your inputs"},
+
+    # Sidebar navigation — new "Process Comparison" entry
+    "nav_comparison": {"de": "Prozessvergleich", "en": "Process Comparison"},
+
+    # Process Comparison page
+    "comparison_page_title": {
+        "de": "Prozessvergleich",
+        "en": "Process Comparison",
+    },
+    "comparison_page_intro": {
+        "de": "Vergleicht alle für ein Molekül plausiblen Produktionsrouten parallel und liefert eine quantifizierte Engine-Empfehlung. Erstellt einen eigenständigen Vergleichs-PDF — der reguläre Empfehlungs-Report bleibt davon unberührt.",
+        "en": "Compares all production routes the engine considers viable for a molecule and delivers a quantified engine recommendation. Produces a standalone comparison PDF — the regular recommendation report is unaffected.",
+    },
+    "comparison_no_molecules": {
+        "de": "Keine Moleküle in der Datenbank verfügbar.",
+        "en": "No molecules available in the database.",
+    },
+    "comparison_select_molecule": {
+        "de": "Zielmolekül auswählen",
+        "en": "Select target molecule",
+    },
+    "comparison_select_molecule_help": {
+        "de": "Wählen Sie das Molekül, für das alle verfügbaren Produktionsrouten verglichen werden sollen.",
+        "en": "Pick the molecule whose production routes should be compared.",
+    },
+    "comparison_molecule_not_found": {
+        "de": "Molekül in der Datenbank nicht gefunden.",
+        "en": "Molecule not found in the database.",
+    },
+    "comparison_inputs_header": {
+        "de": "Eingangsparameter für den Vergleich",
+        "en": "Input parameters for the comparison",
+    },
+    "comparison_rm_help": {
+        "de": "Geschätzter Rohstoffpreis. Wird in allen verglichenen Routen identisch angewendet.",
+        "en": "Estimated raw-material price. Applied identically across all compared routes.",
+    },
+    "comparison_steps_label": {
+        "de": "Anzahl Prozessschritte / Unit-Operations",
+        "en": "Number of process steps / unit operations",
+    },
+    "comparison_steps_help": {
+        "de": "Geschätzte Schritt-/Unit-Op-Zahl. Wird auf alle Routen einheitlich angewendet — die spezifische Tiefe pro Route kommt aus der Engine.",
+        "en": "Estimated step / unit-op count. Applied identically across routes — the engine derives per-route depth.",
+    },
+    "comparison_preview_label": {
+        "de": "Vorschau",
+        "en": "Preview",
+    },
+    "comparison_generate_button": {
+        "de": "📊 Vergleichs-PDF erstellen",
+        "en": "📊 Generate comparison PDF",
+    },
+    "comparison_generating_spinner": {
+        "de": "Erstelle Prozessvergleich-PDF …",
+        "en": "Generating process-comparison PDF …",
+    },
+    "comparison_success": {
+        "de": "Vergleichs-PDF erstellt. Download unten verfügbar.",
+        "en": "Comparison PDF generated. Download below.",
+    },
+    "comparison_error_prefix": {
+        "de": "Fehler beim Erstellen des Vergleichs-PDFs",
+        "en": "Failed to generate comparison PDF",
+    },
+    "comparison_download_button": {
+        "de": "📥 Prozessvergleich für {molecule} herunterladen",
+        "en": "📥 Download process comparison for {molecule}",
+    },
+    "comparison_inline_preview_header": {
+        "de": "Live-Vorschau",
+        "en": "Live preview",
+    },
+    "comparison_no_routes": {
+        "de": "Für dieses Molekül identifiziert die Engine keine vergleichbaren Routen.",
+        "en": "The engine identifies no comparable routes for this molecule.",
+    },
+    "comparison_inline_error_prefix": {
+        "de": "Live-Vorschau nicht verfügbar",
+        "en": "Live preview unavailable",
+    },
+    "comparison_col_method": {"de": "Methode", "en": "Method"},
+    "comparison_col_cost": {"de": "Cost", "en": "Cost"},
+    "comparison_col_risk": {"de": "Risk", "en": "Risk"},
+    "comparison_col_efficiency": {"de": "Effizienz", "en": "Efficiency"},
+    "comparison_col_cogs": {"de": "COGS €/kg", "en": "COGS €/kg"},
+    "comparison_col_yield": {"de": "Yield", "en": "Yield"},
+    "comparison_col_steps": {"de": "Schritte", "en": "Steps"},
+    "comparison_engine_recommendation": {
+        "de": "Engine-Empfehlung",
+        "en": "Engine recommendation",
+    },
+
     # Feature D — what-if sensitivity panel labels
     "sensitivity_section_title": {
         "de": "🎚 Was-wäre-wenn: Sensitivitäts-Analyse",

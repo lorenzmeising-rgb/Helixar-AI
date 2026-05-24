@@ -1877,6 +1877,192 @@ def show_overview_page():
             st.rerun()
 
 
+def show_comparison_page():
+    """Process Comparison — select a molecule and produce a dedicated
+    comparison PDF that scores all viable production routes
+    side-by-side and ends with a quantified recommendation."""
+    st.title(t("comparison_page_title"))
+    st.caption(t("comparison_page_intro"))
+    st.markdown("<div style='height:14px;'></div>", unsafe_allow_html=True)
+
+    # Molecule picker — uses the same database as the main flow.
+    try:
+        from molecules_db import MOLECULE_DATABASE
+        mol_names = sorted([m["name"] for m in MOLECULE_DATABASE])
+    except Exception:
+        mol_names = []
+    if not mol_names:
+        st.warning(t("comparison_no_molecules"))
+        return
+
+    sel_name = st.selectbox(
+        t("comparison_select_molecule"),
+        options=mol_names,
+        index=mol_names.index("Vanillin") if "Vanillin" in mol_names else 0,
+        help=t("comparison_select_molecule_help"),
+    )
+
+    db_entry = next((m for m in MOLECULE_DATABASE if m["name"] == sel_name), None)
+    if not db_entry:
+        st.error(t("comparison_molecule_not_found"))
+        return
+
+    st.markdown("---")
+    st.subheader(t("comparison_inputs_header"))
+
+    col_a, col_b = st.columns(2)
+    with col_a:
+        purity_pct = st.number_input(
+            t("purity_label"),
+            min_value=80.0, max_value=99.999, value=99.0, step=0.1,
+            format="%.2f", key="cmp_purity",
+            help=t("purity_help"),
+        )
+    with col_b:
+        scale_kg = st.number_input(
+            t("scale_label"),
+            min_value=0.001, max_value=1_000_000.0, value=100.0, step=1.0,
+            format="%.3f", key="cmp_scale",
+            help=t("scale_help"),
+        )
+
+    col_c, col_d = st.columns(2)
+    with col_c:
+        rm_cost = st.number_input(
+            t("metric_cost"),
+            min_value=0.5, max_value=10_000.0, value=50.0, step=1.0,
+            format="%.2f", key="cmp_rm_cost",
+            help=t("comparison_rm_help"),
+        )
+    with col_d:
+        n_steps = st.number_input(
+            t("comparison_steps_label"),
+            min_value=1, max_value=100, value=5, step=1,
+            key="cmp_n_steps",
+            help=t("comparison_steps_help"),
+        )
+
+    st.markdown("---")
+    st.markdown(
+        f"**{t('comparison_preview_label')}:** "
+        f"{db_entry.get('molecule_type', '?')}/{db_entry.get('molecule_subtype', '?')} · "
+        f"{db_entry.get('smiles') or db_entry.get('external_id') or '—'}"
+    )
+
+    # Build the process_input dict the same way the comparison engine
+    # expects it.
+    process_input = {
+        "molecule_name": sel_name,
+        "molecule_type": db_entry.get("molecule_type"),
+        "molecule_subtype": db_entry.get("molecule_subtype"),
+        "smiles": db_entry.get("smiles"),
+        "external_id": db_entry.get("external_id"),
+        "method": "chemical",  # placeholder — comparison runs all viable methods
+        "number_of_steps": int(n_steps),
+        "desired_purity_percent": float(purity_pct),
+        "scale_kg_per_year": float(scale_kg),
+        "raw_material_cost_eur_per_kg": float(rm_cost),
+        "num_qualified_suppliers": 3,
+        "lead_time_weeks": 4.0,
+        "single_region_concentration": False,
+        "strict_waste_constraints": False,
+        "has_bioreactor": True,
+        "has_advanced_purification": True,
+        "available_methods": {
+            "has_flash_chromatography": True, "has_prep_hplc": True,
+            "has_rotary_evaporator": True, "has_lyophilizer": True,
+            "has_crystallization": True, "has_membrane_filtration": True,
+            "has_fplc": True, "has_extraction": True,
+        },
+    }
+
+    st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
+
+    if st.button(t("comparison_generate_button"), type="primary"):
+        try:
+            from comparison_report import export_comparison_pdf
+            with st.spinner(t("comparison_generating_spinner")):
+                pdf_bytes = export_comparison_pdf(
+                    process_input, lang=st.session_state.get("ui_lang", "de")
+                )
+            st.session_state["cmp_pdf_bytes"] = pdf_bytes
+            st.session_state["cmp_pdf_molecule"] = sel_name
+            st.success(t("comparison_success"))
+        except Exception as e:
+            st.error(f"{t('comparison_error_prefix')}: {e}")
+
+    # Show the download button if a comparison PDF has been generated
+    pdf_bytes_dl = st.session_state.get("cmp_pdf_bytes")
+    pdf_mol_dl = st.session_state.get("cmp_pdf_molecule")
+    if pdf_bytes_dl and pdf_mol_dl:
+        st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
+        st.download_button(
+            label=t("comparison_download_button").format(molecule=pdf_mol_dl),
+            data=pdf_bytes_dl,
+            file_name=f"Helixar_Prozessvergleich_{pdf_mol_dl}.pdf",
+            mime="application/pdf",
+            type="secondary",
+        )
+
+    # Inline preview of the comparison table (visible without download).
+    st.markdown("---")
+    st.subheader(t("comparison_inline_preview_header"))
+    try:
+        from route_comparison import compare_routes, METHODS_DE, METHODS_EN
+        cmp = compare_routes(process_input)
+        if not cmp.rows:
+            st.info(t("comparison_no_routes"))
+        else:
+            import pandas as _pd
+            lang = st.session_state.get("ui_lang", "de")
+            methods_table = METHODS_EN if lang == "en" else METHODS_DE
+            tier_de = {
+                "efficiency": {"low": "Kritisch", "medium": "Optimierbar", "high": "Robust", "very high": "Best-in-class"},
+                "cost":       {"low": "Commodity-Niveau", "medium": "Mid-Tier-API", "high": "Specialty-Tier", "very high": "Biologika-Niveau"},
+                "risk":       {"low": "Etabliert", "medium": "Akzeptabel", "high": "Überwachungsbedürftig", "very high": "Kritisch"},
+            }
+            tier_en = {
+                "efficiency": {"low": "Critical", "medium": "Optimisable", "high": "Robust", "very high": "Best-in-class"},
+                "cost":       {"low": "Commodity-tier", "medium": "Mid-tier API", "high": "Specialty-tier", "very high": "Biologic-tier"},
+                "risk":       {"low": "Established", "medium": "Acceptable", "high": "Monitoring-required", "very high": "Critical"},
+            }
+            tier_table = tier_en if lang == "en" else tier_de
+            def _tier(label, metric):
+                key = str(label or "medium").lower()
+                key = {"niedrig": "low", "mittel": "medium", "hoch": "high", "sehr hoch": "very high"}.get(key, key)
+                return tier_table.get(metric, {}).get(key, str(label).title())
+
+            rows = []
+            for r in cmp.rows:
+                cogs_str = (f"{r.cogs_low_eur_per_kg:.0f}–{r.cogs_high_eur_per_kg:.0f}"
+                            if r.cogs_low_eur_per_kg is not None else "—")
+                rows.append({
+                    "★" if lang != "en" else "Rank":     "★" if r.decision_rank == 1 else f"{r.decision_rank}.",
+                    t("comparison_col_method"):           methods_table.get(r.method, r.method),
+                    t("comparison_col_cost"):             _tier(r.cost_label, "cost"),
+                    t("comparison_col_risk"):             _tier(r.risk_label, "risk"),
+                    t("comparison_col_efficiency"):       _tier(r.efficiency_label, "efficiency"),
+                    t("comparison_col_cogs"):             cogs_str,
+                    t("comparison_col_yield"):            r.expected_yield or "—",
+                    t("comparison_col_steps"):            f"{r.n_production_steps}" if r.has_concrete_steps
+                                                          else ("generic" if lang == "en" else "generisch"),
+                })
+            st.dataframe(_pd.DataFrame(rows), hide_index=True, use_container_width=True)
+
+            # Engine reasoning below the table
+            top_method = methods_table.get(cmp.recommended_method, cmp.recommended_method)
+            reason = (cmp.recommendation_reason_en if lang == "en"
+                      else cmp.recommendation_reason_de)
+            st.markdown(
+                f"**{t('comparison_engine_recommendation')}:** "
+                f":blue[**{top_method}**]"
+            )
+            if reason:
+                st.caption(reason)
+    except Exception as e:
+        st.warning(f"{t('comparison_inline_error_prefix')}: {e}")
+
+
 def show_demos_page():
     """Pre-built demo scenarios — visual card grid (mockup style)."""
     st.title(t("demo_page_title"))
@@ -2120,10 +2306,11 @@ with st.sidebar:
     st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
 
 # Icon-prefixed navigation labels
-_nav_keys = ["home", "generate", "demos", "feedback", "settings"]
+_nav_keys = ["home", "generate", "comparison", "demos", "feedback", "settings"]
 _nav_label_keys = {
     "home": "nav_home",
     "generate": "nav_generate",
+    "comparison": "nav_comparison",
     "demos": "nav_demos",
     "feedback": "nav_feedback",
     "settings": "nav_settings",
@@ -2131,6 +2318,7 @@ _nav_label_keys = {
 _nav_icons = {
     "home": "🏠",
     "generate": "✨",
+    "comparison": "📊",
     "demos": "🧬",
     "feedback": "💬",
     "settings": "⚙️",
@@ -2175,6 +2363,8 @@ else:
         show_landing_page()
     elif page == "generate":
         show_start_page()
+    elif page == "comparison":
+        show_comparison_page()
     elif page == "demos":
         show_demos_page()
     elif page == "feedback":
