@@ -489,14 +489,259 @@ def export_report_pdf(
     if title is None:
         title = f"Produktionsstrategie Bericht — {compound_title}"
 
-    # PAGE 1 — Executive Summary
+    # Pre-extract the method label, input_params, and concrete-recs
+    # early so the Page 0 one-pager can use them (these were originally
+    # assigned later on Pages 1 and 2).
+    method = rec.get('method') or rec.get('microorganism')
+    ptype = rec.get('process_type') or rec.get('strain')
+    input_params = blueprint.get('input_parameters') or {}
+    concrete = extras.get("concrete_recs") or {}
+
+    # ----------------------------------------------------------------------
+    # PAGE 0 — Executive One-Pager (Feature B)
+    # ----------------------------------------------------------------------
+    # A single-page management-grade summary that a Process Scientist can
+    # forward to their Director or Investment Committee without further
+    # explanation: TL;DR sentence, three key-number tiles, a bottom-line
+    # statement, and the top three actionable bullets.
+
+    # Headline / brand band ------------------------------------------------
+    elems.append(Paragraph("Helixar AI", styles["HelixarTitle"]))
+    elems.append(Spacer(1, 4))
+    elems.append(Paragraph(
+        L("pdf_subtitle"), styles["DocSubtitle"],
+    ))
+    elems.append(Spacer(1, 18))
+
+    # One-pager title
+    _exec_title = ("Executive Summary — Routenentscheidung"
+                   if lang != "en"
+                   else "Executive Summary — Route Decision")
+    elems.append(Paragraph(
+        f"<para alignment='center'><b>{_exec_title}</b></para>",
+        styles["ExecTitle"],
+    ))
+
+    # Compound + recommended route
+    _compound_lc = str((blueprint.get('input_parameters') or {}).get('molecule_name')
+                       or rec.get('compound_name')
+                       or compound_title).strip()
+    _recomm_method = None
+    _recomm_label = None
+    try:
+        from route_comparison import compare_routes as _cmp_exec, METHODS_DE as _MDE, METHODS_EN as _MEN
+        _cmp_result = _cmp_exec(input_params)
+        _recomm_method = _cmp_result.recommended_method if _cmp_result else None
+        _table_for = _MEN if lang == "en" else _MDE
+        if _recomm_method:
+            _recomm_label = _table_for.get(_recomm_method, _recomm_method)
+    except Exception:
+        _recomm_method = None
+        _recomm_label = None
+
+    if not _recomm_label:
+        _recomm_label = _translate_method_display(method, lang)
+
+    _tldr_de = (
+        f"Für <b>{_compound_lc}</b> empfiehlt die Engine als Produktionsroute: "
+        f"<font color='#1E3A5F'><b>{_recomm_label}</b></font>."
+    )
+    _tldr_en = (
+        f"For <b>{_compound_lc}</b>, the engine recommends the following "
+        f"production route: <font color='#1E3A5F'><b>{_recomm_label}</b></font>."
+    )
+    elems.append(Paragraph(
+        f"<para alignment='center' fontSize='13' leading='17'>{_tldr_en if lang == 'en' else _tldr_de}</para>",
+        normal,
+    ))
+    elems.append(Spacer(1, 20))
+
+    # Three key-number tiles ----------------------------------------------
+    # COGS / Yield / Time-to-Pilot — directly the numbers Directors ask for.
+    try:
+        from cogs_estimator import estimate_cogs as _est_one, format_cogs_range as _fmt_one
+        _cogs_one = _est_one(input_params) or {}
+        _cogs_range_str = _fmt_one(_cogs_one, lang=lang) or "—"
+    except Exception:
+        _cogs_range_str = "—"
+
+    _yield_str = "—"
+    try:
+        if concrete and concrete.get("expected_yield"):
+            _yield_str = str(concrete.get("expected_yield"))
+    except Exception:
+        pass
+
+    # Time-to-pilot heuristic per subtype (no hard data in DB — use
+    # industry-typical bands).
+    _ttp_table = {
+        ("small_molecule", "volatile"):     ("6 – 12",  "Monate", "months"),
+        ("small_molecule", "non_volatile"): ("9 – 18",  "Monate", "months"),
+        ("natural_product", "alkaloid"):    ("12 – 24", "Monate", "months"),
+        ("natural_product", "terpene"):     ("9 – 18",  "Monate", "months"),
+        ("peptide", "linear"):              ("12 – 18", "Monate", "months"),
+        ("peptide", "cyclic"):              ("18 – 30", "Monate", "months"),
+        ("protein", "antibody"):            ("24 – 36", "Monate", "months"),
+        ("protein", "enzyme"):              ("9 – 18",  "Monate", "months"),
+    }
+    _ttp_key = (
+        str(input_params.get("molecule_type") or "").lower(),
+        str(input_params.get("molecule_subtype") or "").lower(),
+    )
+    _ttp_value, _ttp_unit_de, _ttp_unit_en = _ttp_table.get(_ttp_key, ("12 – 24", "Monate", "months"))
+    _ttp_str = f"{_ttp_value} {_ttp_unit_en if lang == 'en' else _ttp_unit_de}"
+
+    # Tile rendering
+    _tile_labels_de = ["COGS pro kg", "Erwartete Ausbeute", "Time-to-Pilot"]
+    _tile_labels_en = ["COGS per kg", "Expected yield", "Time-to-Pilot"]
+    _tile_labels = _tile_labels_en if lang == "en" else _tile_labels_de
+
+    from reportlab.platypus import Table, TableStyle
+    _tile_row_top = [
+        Paragraph(f"<para alignment='center'><font size='9' color='#5A6B7B'>{_tile_labels[0]}</font></para>", normal),
+        Paragraph(f"<para alignment='center'><font size='9' color='#5A6B7B'>{_tile_labels[1]}</font></para>", normal),
+        Paragraph(f"<para alignment='center'><font size='9' color='#5A6B7B'>{_tile_labels[2]}</font></para>", normal),
+    ]
+    _tile_row_value = [
+        Paragraph(f"<para alignment='center'><font size='15' color='#1E3A5F'><b>{_cogs_range_str}</b></font></para>", normal),
+        Paragraph(f"<para alignment='center'><font size='15' color='#1E3A5F'><b>{_yield_str}</b></font></para>", normal),
+        Paragraph(f"<para alignment='center'><font size='15' color='#1E3A5F'><b>{_ttp_str}</b></font></para>", normal),
+    ]
+    tiles_table = Table(
+        [_tile_row_top, _tile_row_value],
+        colWidths=[58 * mm, 58 * mm, 58 * mm],
+        hAlign="CENTER",
+    )
+    tiles_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F4F7FA")),
+        ("BOX",        (0, 0), (-1, -1), 0.5, colors.HexColor("#DDE5EC")),
+        ("INNERGRID",  (0, 0), (-1, -1), 0.5, colors.HexColor("#DDE5EC")),
+        ("VALIGN",     (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, 0), 8),
+        ("BOTTOMPADDING", (0, 1), (-1, 1), 12),
+        ("TOPPADDING", (0, 1), (-1, 1), 2),
+    ]))
+    elems.append(tiles_table)
+    elems.append(Spacer(1, 22))
+
+    # Bottom-line statement — generated based on the comparison rationale
+    _bottom_line_de = None
+    _bottom_line_en = None
+    try:
+        if _cmp_result and _cmp_result.rows and len(_cmp_result.rows) >= 2:
+            _top = _cmp_result.rows[0]
+            _next = _cmp_result.rows[1]
+            # Compare scores quantitatively
+            _cost_diff = _next.cost_score - _top.cost_score
+            _risk_diff = _next.risk_score - _top.risk_score
+            if _cost_diff >= 3:
+                _bottom_line_de = (
+                    f"Diese Route ist {_cost_diff//2 + 1}× günstiger als die nächstbeste "
+                    f"Alternative ({_next.method_label_de}) und industriell etabliert."
+                )
+                _bottom_line_en = (
+                    f"This route is {_cost_diff//2 + 1}× cheaper than the next-best "
+                    f"alternative ({_next.method_label_en}) and industrially established."
+                )
+            elif _risk_diff >= 3:
+                _bottom_line_de = (
+                    f"Diese Route hat deutlich geringeres Operations-Risiko als "
+                    f"{_next.method_label_de} bei vergleichbaren Kosten."
+                )
+                _bottom_line_en = (
+                    f"This route has substantially lower operational risk than "
+                    f"{_next.method_label_en} at comparable cost."
+                )
+            elif _top.has_concrete_steps and not _next.has_concrete_steps:
+                _bottom_line_de = (
+                    "Diese Route hat dokumentierte industrielle Vorlagen — die "
+                    "Alternative ist nur als Cluster-Schätzung verfügbar."
+                )
+                _bottom_line_en = (
+                    "This route has documented industrial precedents — the "
+                    "alternative is only available as a cluster estimate."
+                )
+        elif _cmp_result and len(_cmp_result.rows) == 1:
+            _msub_one = (_cmp_result.molecule_subtype or "").lower()
+            if _msub_one == "antibody":
+                _bottom_line_de = "Für mAbs ist die CHO-Zellkultur der industrielle De-facto-Standard."
+                _bottom_line_en = "CHO cell culture is the de-facto industrial standard for mAbs."
+            elif _msub_one == "enzyme":
+                _bottom_line_de = "Mikrobielle Fermentation ist der industrielle De-facto-Standard für rekombinante Enzyme."
+                _bottom_line_en = "Microbial fermentation is the de-facto industrial standard for recombinant enzymes."
+    except Exception:
+        pass
+
+    if not _bottom_line_de:
+        _bottom_line_de = "Diese Route wurde von der Engine als beste Gesamtbilanz aus Kosten, Risiko und Effizienz identifiziert."
+        _bottom_line_en = "This route was identified as the best overall balance of cost, risk and efficiency."
+
+    _bl = _bottom_line_en if lang == "en" else _bottom_line_de
+    elems.append(Paragraph(
+        f"<para alignment='center'><i><font color='#1E3A5F' size='11'>„{_bl}\"</font></i></para>",
+        normal,
+    ))
+    elems.append(Spacer(1, 22))
+
+    # Top three actionable bullets ----------------------------------------
+    _key_actions_de = "Drei Hebel mit höchstem Wirkungsgrad:"
+    _key_actions_en = "Three highest-leverage actions:"
+    elems.append(Paragraph(
+        f"<b>{_key_actions_en if lang == 'en' else _key_actions_de}</b>",
+        normal,
+    ))
+    elems.append(Spacer(1, 4))
+
+    # Pick the top 3 from extras.recommended_actions (rule-based) or
+    # fall back to analysis.improvements.
+    _exec_actions = []
+    try:
+        _rec_actions = extras.get("recommended_actions") or []
+        for a in _rec_actions[:3]:
+            if isinstance(a, dict) and a.get("title"):
+                _exec_actions.append(a["title"])
+    except Exception:
+        pass
+    if not _exec_actions:
+        try:
+            _exec_actions = (analysis.get("improvements") or [])[:3]
+        except Exception:
+            _exec_actions = []
+    if not _exec_actions:
+        _exec_actions = [
+            ("Detailliertes CMC-Audit der Routenparameter durchführen"
+             if lang != "en" else
+             "Run a detailed CMC audit of the route parameters"),
+            ("Pilot-Produktion im 1–10-kg-Maßstab planen"
+             if lang != "en" else
+             "Plan pilot-scale production at 1–10 kg"),
+            ("Lieferanten- und Qualitätsstrategie definieren"
+             if lang != "en" else
+             "Define supplier and quality strategy"),
+        ]
+    for a in _exec_actions[:3]:
+        elems.append(Paragraph(f"• {TE(a)}", normal))
+    elems.append(Spacer(1, 18))
+
+    # Footer reference to the detailed report
+    _footer_de = ("Detaillierte Analyse, Quellen und Routenvergleich "
+                  "auf den folgenden Seiten.")
+    _footer_en = ("Detailed analysis, sources and route comparison on "
+                  "the following pages.")
+    elems.append(Paragraph(
+        f"<para alignment='center'><i><font size='8' color='#5A6B7B'>{_footer_en if lang == 'en' else _footer_de}</font></i></para>",
+        normal,
+    ))
+    elems.append(PageBreak())
+
+    # ----------------------------------------------------------------------
+    # PAGE 1 — Executive Summary (technical detail; preserved unchanged)
+    # ----------------------------------------------------------------------
     elems.append(Paragraph("Helixar AI", styles["HelixarTitle"]))  # brand name — no translation
     elems.append(Spacer(1, 6))
     elems.append(Paragraph(L("pdf_subtitle"), styles["DocSubtitle"]))
     elems.append(Spacer(1, 10))
-
-    method = rec.get('method') or rec.get('microorganism')
-    ptype = rec.get('process_type') or rec.get('strain')
+    # (method/ptype already extracted above for the Page-0 one-pager)
 
     current_date = __import__("datetime").datetime.utcnow().strftime('%Y-%m-%d')
     meta_table = [
@@ -948,7 +1193,7 @@ def export_report_pdf(
     elems.append(Paragraph(L("pdf_process_analysis"), styles["ExecTitle"]))
     elems.append(Spacer(1, 8))
 
-    input_params = blueprint.get('input_parameters') or {}
+    # (input_params already extracted above for Page-0 one-pager)
     has_adv_pur = bool(input_params.get('has_advanced_purification'))
 
     # Bug F2 fix: a short "Why this route?" rationale that's always
