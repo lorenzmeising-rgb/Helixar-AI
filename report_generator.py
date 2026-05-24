@@ -578,10 +578,16 @@ def export_report_pdf(
         return table.get(metric, {}).get(normalized, str(v).title())
 
     def perf_value_markup(v: str, metric: str = "cost") -> str:
-        """Return bold + coloured tier markup (replaces HOCH/MITTEL/NIEDRIG)."""
-        color = perf_color(v, metric=metric)
+        """Return the tier label in bold brand-navy.
+
+        Bug B7 fix: previously the tier word itself was coloured red /
+        amber / green, which looked like a traffic-light rating on a
+        single word and felt unprofessional. Now the tier word is
+        rendered in the same brand-navy as other emphasised terms in the
+        report, with no per-word colour coding.
+        """
         tier = _tier_label_text(v, metric)
-        return f'<font color="{color}"><b>{tier}</b></font>'
+        return f'<font color="#1E3A5F"><b>{tier}</b></font>'
 
     # ---- Numeric score mapping (label → X/10) ----
     # Provides a concrete numerical anchor next to the qualitative bucket so
