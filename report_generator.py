@@ -596,6 +596,46 @@ def export_report_pdf(
     _tile_labels_en = ["COGS per kg", "Expected yield", "Time-to-Pilot"]
     _tile_labels = _tile_labels_en if lang == "en" else _tile_labels_de
 
+    # Feature C: industry benchmarks per subtype — comparison line is
+    # rendered below each tile value so reviewers see "your value vs.
+    # industry-best" at a glance.
+    _bench = None
+    _bench_cogs = None
+    _bench_yield = None
+    _bench_ttp = None
+    try:
+        from industry_benchmarks import (
+            get_benchmarks,
+            fmt_yield_comparison,
+            fmt_cogs_comparison,
+            fmt_ttp_comparison,
+        )
+        _bench = get_benchmarks(
+            input_params.get("molecule_type") or "",
+            input_params.get("molecule_subtype") or "",
+        )
+        if _bench:
+            _bench_cogs = fmt_cogs_comparison(
+                _cogs_one.get("low_eur_per_kg") if isinstance(_cogs_one, dict) else None,
+                _cogs_one.get("high_eur_per_kg") if isinstance(_cogs_one, dict) else None,
+                _bench, lang,
+            )
+            _bench_yield = fmt_yield_comparison(_yield_str, _bench, lang)
+            _bench_ttp = fmt_ttp_comparison(_bench, lang)
+    except Exception:
+        pass
+
+    def _bench_para(text: Optional[str]) -> 'Paragraph':
+        if not text:
+            return Paragraph(
+                "<para alignment='center'><font size='7' color='#A0B0C2'>—</font></para>",
+                normal,
+            )
+        return Paragraph(
+            f"<para alignment='center'><font size='7' color='#5A6B7B'><i>{text}</i></font></para>",
+            normal,
+        )
+
     from reportlab.platypus import Table, TableStyle
     _tile_row_top = [
         Paragraph(f"<para alignment='center'><font size='9' color='#5A6B7B'>{_tile_labels[0]}</font></para>", normal),
@@ -607,8 +647,13 @@ def export_report_pdf(
         Paragraph(f"<para alignment='center'><font size='15' color='#1E3A5F'><b>{_yield_str}</b></font></para>", normal),
         Paragraph(f"<para alignment='center'><font size='15' color='#1E3A5F'><b>{_ttp_str}</b></font></para>", normal),
     ]
+    _tile_row_bench = [
+        _bench_para(_bench_cogs),
+        _bench_para(_bench_yield),
+        _bench_para(_bench_ttp),
+    ]
     tiles_table = Table(
-        [_tile_row_top, _tile_row_value],
+        [_tile_row_top, _tile_row_value, _tile_row_bench],
         colWidths=[58 * mm, 58 * mm, 58 * mm],
         hAlign="CENTER",
     )
@@ -618,11 +663,22 @@ def export_report_pdf(
         ("INNERGRID",  (0, 0), (-1, -1), 0.5, colors.HexColor("#DDE5EC")),
         ("VALIGN",     (0, 0), (-1, -1), "MIDDLE"),
         ("TOPPADDING", (0, 0), (-1, 0), 8),
-        ("BOTTOMPADDING", (0, 1), (-1, 1), 12),
+        ("BOTTOMPADDING", (0, 1), (-1, 1), 4),
         ("TOPPADDING", (0, 1), (-1, 1), 2),
+        ("BOTTOMPADDING", (0, 2), (-1, 2), 8),
+        ("TOPPADDING",    (0, 2), (-1, 2), 0),
     ]))
     elems.append(tiles_table)
-    elems.append(Spacer(1, 22))
+    elems.append(Spacer(1, 6))
+    if _bench:
+        _bench_src = _bench.get("source_en" if lang == "en" else "source_de", "")
+        elems.append(Paragraph(
+            f"<para alignment='center'><font size='7' color='#A0B0C2'><i>"
+            f"{'Benchmark source' if lang == 'en' else 'Benchmark-Quelle'}: "
+            f"{_to_pdf_safe(str(_bench_src))}</i></font></para>",
+            normal,
+        ))
+    elems.append(Spacer(1, 18))
 
     # Bottom-line statement — generated based on the comparison rationale
     _bottom_line_de = None
@@ -2021,11 +2077,53 @@ def export_report_pdf(
         elems.append(Spacer(1, 8))
         elems.append(Paragraph(L("references_intro"), normal))
         elems.append(Spacer(1, 6))
+
+        # Feature C: turn every DOI and ISBN into a clickable hyperlink.
+        # DOIs resolve via https://doi.org/<doi>; ISBNs link to
+        # worldcat.org (most reliable open lookup for ISBN → record).
+        # ReportLab uses <link href="..."> with brand-accent colour to
+        # signal the link without making the text noisy.
+        import re as _re_links
+        _doi_re = _re_links.compile(r"10\.\d{4,9}/[-._;()/:A-Za-z0-9]+")
+        _isbn_re = _re_links.compile(r"ISBN[\s:\-]*([\d\- ]{10,17})", flags=_re_links.IGNORECASE)
+        _link_color = "#1E6FB8"  # navy-accent, distinguishable from the body but not jarring
+
+        def _linkify(src_text: str) -> str:
+            """Wrap DOIs and ISBNs in `<link>` tags so they're clickable."""
+            sanitised = _to_pdf_safe(src_text)
+            # DOIs first
+            def _doi_repl(m):
+                d = m.group(0)
+                # strip trailing punctuation like ).,;
+                stripped = d.rstrip(").,;")
+                trail = d[len(stripped):]
+                return (f'<link href="https://doi.org/{stripped}" color="{_link_color}">'
+                        f'{stripped}</link>{trail}')
+            out = _doi_re.sub(_doi_repl, sanitised)
+            # ISBNs second
+            def _isbn_repl(m):
+                full = m.group(0)
+                num_raw = m.group(1)
+                num_clean = num_raw.replace("-", "").replace(" ", "")
+                return (f'<link href="https://www.worldcat.org/isbn/{num_clean}" '
+                        f'color="{_link_color}">{full}</link>')
+            out = _isbn_re.sub(_isbn_repl, out)
+            return out
+
         for idx, src in enumerate(aggregated_sources, start=1):
-            # Bug H2: sanitise Latin-Extended-A so author names like
-            # 'Celińska' don't render as 'Celi■ska' under Helvetica.
-            elems.append(Paragraph(f"[{idx}] {_to_pdf_safe(src)}", normal))
+            elems.append(Paragraph(f"[{idx}] {_linkify(src)}", normal))
             elems.append(Spacer(1, 3))
+
+        # Footer note that the links are clickable
+        _link_note_de = ("<i><font size='8' color='#5A6B7B'>"
+                         "DOI- und ISBN-Verweise sind anklickbar (öffnet "
+                         "doi.org bzw. worldcat.org im Browser).</font></i>")
+        _link_note_en = ("<i><font size='8' color='#5A6B7B'>"
+                         "DOI and ISBN references are clickable (open "
+                         "doi.org or worldcat.org in your browser)."
+                         "</font></i>")
+        elems.append(Spacer(1, 6))
+        elems.append(Paragraph(_link_note_en if lang == "en" else _link_note_de, normal))
 
     # ----- Final page: Important Notices (legal / IP / liability / sources) -----
     elems.append(PageBreak())
