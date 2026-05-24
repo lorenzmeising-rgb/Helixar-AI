@@ -493,21 +493,95 @@ def export_report_pdf(
     # Color-coded severity indicator — replaces the previous emoji icons
     # (🔴 ⚠️ 🟢) which ReportLab's default Helvetica font cannot render and
     # would output as ■ squares. Pure text + color is more professional too.
-    def perf_color(v: str) -> str:
+    def perf_color(v: str, metric: str = "cost") -> str:
+        """Pick a colour for the qualitative band.
+
+        For cost/risk/toxicity: HIGH is bad (red), LOW is good (green).
+        For efficiency: HIGH is good (green), LOW is bad (red) — inverted.
+        """
         key = str(v).lower()
-        # red — high severity / unfavourable
-        if key in ("high", "very high", "hoch", "sehr hoch"):
+        is_high = key in ("high", "very high", "hoch", "sehr hoch")
+        is_med = key in ("medium", "mittel")
+        if metric == "efficiency":
+            # efficiency: high = good
+            if is_high:
+                return "#1E8449"
+            if is_med:
+                return "#D68910"
             return "#C0392B"
-        # orange — medium severity
-        if key in ("medium", "mittel"):
+        # cost / risk / toxicity: high = bad
+        if is_high:
+            return "#C0392B"
+        if is_med:
             return "#D68910"
-        # green — low severity / favourable
         return "#1E8449"
 
-    def perf_value_markup(v: str) -> str:
-        """Return bold + coloured value markup for a severity word."""
-        color = perf_color(v)
-        return f'<font color="{color}"><b>{TV(str(v).upper())}</b></font>'
+    # ---- Tier label map (replaces HOCH / MITTEL / NIEDRIG) -----------------
+    # Bug B6 fix: HIGH/MEDIUM/LOW reads like a school traffic-light. CMC
+    # / pharma reports use domain-specific tier names instead — these
+    # carry information about WHAT the band actually means in practice.
+    _TIER_LABELS_DE = {
+        "efficiency": {
+            "low":       "Kritisch",
+            "medium":    "Optimierbar",
+            "high":      "Robust",
+            "very high": "Best-in-class",
+        },
+        "cost": {
+            "low":       "Commodity-Niveau",
+            "medium":    "Mid-Tier-API",
+            "high":      "Specialty-Tier",
+            "very high": "Biologika-Niveau",
+        },
+        "risk": {
+            "low":       "Etabliert",
+            "medium":    "Akzeptabel",
+            "high":      "Überwachungsbedürftig",
+            "very high": "Kritisch",
+        },
+        "toxicity": {
+            "low":       "Standard-Handhabung",
+            "medium":    "Standard-API-Containment",
+            "high":      "Erhöhte Containment-Anforderung",
+            "very high": "GMP-Cat-3-Containment",
+        },
+    }
+    _TIER_LABELS_EN = {
+        "efficiency": {
+            "low": "Critical", "medium": "Optimisable",
+            "high": "Robust", "very high": "Best-in-class",
+        },
+        "cost": {
+            "low": "Commodity-tier", "medium": "Mid-tier API",
+            "high": "Specialty-tier", "very high": "Biologic-tier",
+        },
+        "risk": {
+            "low": "Established", "medium": "Acceptable",
+            "high": "Monitoring-required", "very high": "Critical",
+        },
+        "toxicity": {
+            "low": "Standard handling", "medium": "Standard API containment",
+            "high": "Elevated containment", "very high": "GMP cat-3 containment",
+        },
+    }
+
+    def _tier_label_text(v: str, metric: str) -> str:
+        """Return the domain-specific tier name for a qualitative band."""
+        key = str(v).lower().replace(" ", " ").strip()
+        # Accept German + English values
+        key_map = {
+            "niedrig": "low", "mittel": "medium",
+            "hoch": "high", "sehr hoch": "very high",
+        }
+        normalized = key_map.get(key, key)
+        table = _TIER_LABELS_EN if lang == "en" else _TIER_LABELS_DE
+        return table.get(metric, {}).get(normalized, str(v).title())
+
+    def perf_value_markup(v: str, metric: str = "cost") -> str:
+        """Return bold + coloured tier markup (replaces HOCH/MITTEL/NIEDRIG)."""
+        color = perf_color(v, metric=metric)
+        tier = _tier_label_text(v, metric)
+        return f'<font color="{color}"><b>{tier}</b></font>'
 
     # ---- Numeric score mapping (label → X/10) ----
     # Provides a concrete numerical anchor next to the qualitative bucket so
@@ -710,18 +784,21 @@ def export_report_pdf(
     tox = analysis.get('final_toxicity', analysis.get('toxicity', 'n/a'))
 
     # Render each metric as: <Label>: BEWERTUNG  (X / 10 — kurze Begründung)
-    # The score + reason go in muted grey so the colored rating stays the focal point.
+    # New format (Bug B6): "{Label}: {score}/10 · {Tier-Name} — {rationale}"
+    # The score stays prominent (concrete number to compare on), the tier
+    # name replaces the unprofessional HOCH/MITTEL/NIEDRIG, and the
+    # rationale stays in muted grey as before.
     _muted = "#6B7B8A"
-    def _line(label_key: str, val: str, score: str, reason: str) -> str:
+    def _line(label_key: str, val: str, score: str, reason: str, metric: str) -> str:
         return (
-            f"<b>{L(label_key)}:</b> {perf_value_markup(val)} "
-            f'<font color="{_muted}" size="9">({score} — {reason})</font>'
+            f"<b>{L(label_key)}:</b> {score} · {perf_value_markup(val, metric=metric)} "
+            f'<font color="{_muted}" size="9">— {reason}</font>'
         )
 
-    elems.append(Paragraph(_line("pdf_efficiency", eff, _score_for(eff, "efficiency"), _brief_eff(eff)), styles["Score"]))
-    elems.append(Paragraph(_line("pdf_cost", cost_val, _score_for(cost_val, "cost"), _brief_cost(cost_val)), normal))
-    elems.append(Paragraph(_line("pdf_risk", risk_val, _score_for(risk_val, "risk"), _brief_risk(risk_val)), normal))
-    elems.append(Paragraph(_line("pdf_toxicity", tox, _score_for(tox, "toxicity"), _brief_tox(tox)), normal))
+    elems.append(Paragraph(_line("pdf_efficiency", eff, _score_for(eff, "efficiency"), _brief_eff(eff), "efficiency"), styles["Score"]))
+    elems.append(Paragraph(_line("pdf_cost", cost_val, _score_for(cost_val, "cost"), _brief_cost(cost_val), "cost"), normal))
+    elems.append(Paragraph(_line("pdf_risk", risk_val, _score_for(risk_val, "risk"), _brief_risk(risk_val), "risk"), normal))
+    elems.append(Paragraph(_line("pdf_toxicity", tox, _score_for(tox, "toxicity"), _brief_tox(tox), "toxicity"), normal))
 
     # ---- COGS range estimate (€/kg) — directly below cost qualifier ----
     # Pharma reviewers expect a concrete economic anchor next to the
@@ -752,20 +829,11 @@ def export_report_pdf(
 
     elems.append(Spacer(1, 12))
 
-    try:
-        eff_score = float(analysis.get('efficiency_score', 0.5))
-        cost_score = float(analysis.get('cost_score', 0.5))
-        conf_metric = (eff_score + (1.0 - cost_score)) / 2.0
-        if conf_metric >= 0.66:
-            conf_label = "High"
-        elif conf_metric >= 0.33:
-            conf_label = "Medium"
-        else:
-            conf_label = "Low"
-    except Exception:
-        conf_label = "Medium"
-    elems.append(Paragraph(f"<b>{L('pdf_confidence')}:</b> {TV(conf_label)}", normal))
-    elems.append(Spacer(1, 12))
+    # Bug B6 fix: removed standalone "Confidence Level: Hoch/Mittel/Niedrig"
+    # line. It was a derived mix-score of efficiency and cost that did NOT
+    # measure recommendation reliability (despite the name suggesting so).
+    # The COGS-confidence already lives in the cogs line above, so this
+    # extra label was redundant and misleading.
 
     elems.append(Paragraph(L("pdf_key_issues"), styles["Section"]))
     # Engine-produced issues are in English; translate inline.
@@ -1376,7 +1444,9 @@ def export_report_pdf(
         ))
 
     elems.append(Spacer(1, 12))
-    elems.append(Paragraph(f"{L('pdf_confidence')}: {TV(conf_label)}", styles["BodySmall"]))
+    # (B6: removed the second "Confidence Level: …" line — same reason as
+    # on page 1: the value was a derived efficiency/cost mix-score that did
+    # not actually measure recommendation reliability.)
 
     gen_date = __import__("datetime").datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')
     elems.append(Spacer(1, 18))
