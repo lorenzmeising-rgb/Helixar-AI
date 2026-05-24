@@ -1991,18 +1991,54 @@ def show_comparison_page():
         except Exception as e:
             st.error(f"{t('comparison_error_prefix')}: {e}")
 
-    # Show the download button if a comparison PDF has been generated
+    # Show download button + new-tab preview link if a comparison PDF
+    # has been generated. Mirrors the pattern used on the recommendation
+    # report page: a tiny HTML component opens the PDF as a Blob in a
+    # new browser tab so users get an inline preview without an
+    # embedded iframe.
     pdf_bytes_dl = st.session_state.get("cmp_pdf_bytes")
     pdf_mol_dl = st.session_state.get("cmp_pdf_molecule")
     if pdf_bytes_dl and pdf_mol_dl:
         st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
-        st.download_button(
-            label=t("comparison_download_button").format(molecule=pdf_mol_dl),
-            data=pdf_bytes_dl,
-            file_name=f"Helixar_Prozessvergleich_{pdf_mol_dl}.pdf",
-            mime="application/pdf",
-            type="secondary",
-        )
+        col_dl, col_pv = st.columns(2)
+        with col_dl:
+            st.download_button(
+                label=t("comparison_download_button").format(molecule=pdf_mol_dl),
+                data=pdf_bytes_dl,
+                file_name=f"Helixar_Prozessvergleich_{pdf_mol_dl}.pdf",
+                mime="application/pdf",
+                type="secondary",
+                use_container_width=True,
+            )
+        with col_pv:
+            try:
+                b64 = base64.b64encode(pdf_bytes_dl).decode("utf-8")
+                _preview_label = t("comparison_preview_button").format(molecule=pdf_mol_dl)
+                html = (
+                    "<html><body style='margin:0; font-family: -apple-system, "
+                    "BlinkMacSystemFont, sans-serif;'>"
+                    "<a id='openCmpPdf' href='#' style='display:inline-block; "
+                    "padding:8px 14px; background:#F0F2F6; color:#1E3A5F; "
+                    "border-radius:6px; text-decoration:none; font-weight:600; "
+                    "font-size:14px;'>"
+                    + _preview_label +
+                    "</a>"
+                    "<script>(function(){"
+                    f"const b64=\"{b64}\";"
+                    "document.getElementById('openCmpPdf').addEventListener('click',function(e){"
+                    "e.preventDefault();try{"
+                    "const bc=atob(b64);const bn=new Array(bc.length);"
+                    "for(let i=0;i<bc.length;i++){bn[i]=bc.charCodeAt(i);}"
+                    "const ba=new Uint8Array(bn);"
+                    "const blob=new Blob([ba],{type:'application/pdf'});"
+                    "const url=URL.createObjectURL(blob);window.open(url,'_blank');"
+                    "}catch(err){alert('Vorschau konnte nicht geöffnet werden: '+err);}"
+                    "});})();</script>"
+                    "</body></html>"
+                )
+                st.components.v1.html(html, height=46)
+            except Exception as e:
+                st.error(f"{t('comparison_preview_error_prefix')}: {e}")
 
     # Inline preview of the comparison table (visible without download).
     st.markdown("---")

@@ -502,6 +502,14 @@ TRANSLATIONS = {
         "de": "📥 Prozessvergleich für {molecule} herunterladen",
         "en": "📥 Download process comparison for {molecule}",
     },
+    "comparison_preview_button": {
+        "de": "👁 Vorschau für {molecule} im neuen Tab öffnen",
+        "en": "👁 Open preview for {molecule} in new tab",
+    },
+    "comparison_preview_error_prefix": {
+        "de": "Vorschau konnte nicht erstellt werden",
+        "en": "Could not create preview",
+    },
     "comparison_inline_preview_header": {
         "de": "Live-Vorschau",
         "en": "Live preview",
