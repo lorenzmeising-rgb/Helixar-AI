@@ -266,51 +266,523 @@ def _raw_material_multiplier(eur_per_kg: Optional[float],
 # Public entry point
 # ----------------------------------------------------------------------
 
-# Bug H8 fix: per-molecule overrides for cases where the (type, subtype, method)
-# tuple gives a misleading range. Sources cited in production.
+# Per-molecule COGS overrides — calibrated against published industry
+# benchmarks and commercial bulk prices. Avoid the generic-cluster trap
+# where one anchor (e.g. "Commodity-API: Aspirin–Ibuprofen") spans
+# 16×, smearing the COGS-range over an unhelpful span. The override
+# replaces the cluster anchor with a per-molecule one (1.5–5× span);
+# the multiplier-damping logic further constrains modifier stacking.
 #
-# Format: molecule_name (lowercase, normalised) -> (low €/kg, high €/kg,
-#         anchor_de, anchor_en, breakdown_dict_or_None)
+# Format per entry:
+#   base_low / base_high : €/kg at typical (mid-scale, mid-purity) inputs
+#   breakdown            : RM / DSP / OPEX / CAPEX fractions (must sum to 1.0)
+#   anchor_de / anchor_en: short reference label shown in the PDF
+#
+# Price sources (compact):
+#   - Bulk solvents: ICIS price reports; Sasol/BASF/Dow public lists 2023-2025
+#   - Commodity APIs: Federsel HJ., Nat. Rev. Drug Discov. 2005 (doi:10.1038/nrd1799)
+#   - Biotech APIs: Walsh G., Nat. Biotechnol. 2018 (doi:10.1038/nbt.4313)
+#   - mAbs: Kelley B., MAbs 2009 (doi:10.4161/mabs.1.5.9448)
+#   - SPPS-peptides: Bray BL., Nat. Rev. Drug Discov. 2003 (doi:10.1038/nrd1133)
+#   - NRPS peptides: Marahiel MA., Chem. Rev. 1997 (doi:10.1021/cr960029e)
+#   - Industrial enzymes: Chapman et al., Catalysts 2018 (doi:10.3390/catal8060238)
+#   - Alkaloids: Maier, Ullmann's Encyclopedia 2011 (doi:10.1002/14356007.a07_513.pub2)
+#   - Terpenoids: Bauer, Garbe, Surburg, Common Fragrance & Flavor Materials,
+#                 5th ed., Wiley-VCH 2006 (ISBN 978-3-527-31150-9)
+
 _MOLECULE_COGS_OVERRIDES: Dict[str, Dict[str, Any]] = {
-    # Caffeine: USP/Ph.Eur. bulk-synthetic caffeine from China/India is
-    # commercially priced at 8–25 €/kg (FOB list prices 2024–2025). The
-    # generic alkaloid_chemical anchor (50–600 €/kg) is set for rare
-    # alkaloids like Morphine/Codeine and over-estimates Caffeine by
-    # 1–2 orders of magnitude.
-    # Source: Maier, Ullmann's Encyclopedia of Industrial Chemistry, 7th
-    # ed., Wiley-VCH 2011 — Purines and Caffeine
-    # (doi:10.1002/14356007.a07_513.pub2).
+    # ---------- small_molecule / volatile (bulk solvents) ----------
+    "ethanol": {
+        "base_low": 0.5, "base_high": 1.5,
+        "breakdown": {"rm": 0.45, "dsp": 0.20, "opex": 0.30, "capex": 0.05},
+        "anchor_de": "Bioethanol-Bulk (industrielle Fermentation + Destillation)",
+        "anchor_en": "industrial bioethanol (fermentation + distillation)",
+    },
+    "acetone": {
+        "base_low": 0.7, "base_high": 1.8,
+        "breakdown": {"rm": 0.55, "dsp": 0.15, "opex": 0.25, "capex": 0.05},
+        "anchor_de": "Aceton Welt-Commodity (Cumol-Prozess)",
+        "anchor_en": "acetone world commodity (cumene process)",
+    },
+    "ethyl acetate": {
+        "base_low": 0.8, "base_high": 2.0,
+        "breakdown": {"rm": 0.55, "dsp": 0.15, "opex": 0.25, "capex": 0.05},
+        "anchor_de": "Ethylacetat Welt-Commodity (Veresterung)",
+        "anchor_en": "ethyl acetate world commodity (esterification)",
+    },
+    "methanol": {
+        "base_low": 0.3, "base_high": 0.8,
+        "breakdown": {"rm": 0.50, "dsp": 0.10, "opex": 0.35, "capex": 0.05},
+        "anchor_de": "Methanol Welt-Commodity (Erdgas-Reformierung)",
+        "anchor_en": "methanol world commodity (natural-gas reforming)",
+    },
+    "isopropanol": {
+        "base_low": 0.7, "base_high": 1.6,
+        "breakdown": {"rm": 0.55, "dsp": 0.15, "opex": 0.25, "capex": 0.05},
+        "anchor_de": "Isopropanol Welt-Commodity (Propylen-Hydratation)",
+        "anchor_en": "isopropanol world commodity (propylene hydration)",
+    },
+    "butanol": {
+        "base_low": 1.0, "base_high": 2.5,
+        "breakdown": {"rm": 0.55, "dsp": 0.15, "opex": 0.25, "capex": 0.05},
+        "anchor_de": "n-Butanol Welt-Commodity (Oxo-Synthese)",
+        "anchor_en": "n-butanol world commodity (oxo synthesis)",
+    },
+    "isobutanol": {
+        "base_low": 1.2, "base_high": 3.0,
+        "breakdown": {"rm": 0.55, "dsp": 0.15, "opex": 0.25, "capex": 0.05},
+        "anchor_de": "Isobutanol Welt-Commodity (Oxo-Synthese)",
+        "anchor_en": "isobutanol world commodity (oxo synthesis)",
+    },
+    "2,3-butanediol": {
+        "base_low": 2.0, "base_high": 5.0,
+        "breakdown": {"rm": 0.40, "dsp": 0.25, "opex": 0.30, "capex": 0.05},
+        "anchor_de": "2,3-Butandiol (fermentativ, mittlere Skala)",
+        "anchor_en": "2,3-butanediol (fermentative, mid scale)",
+    },
+    "ethyl lactate": {
+        "base_low": 2.0, "base_high": 5.0,
+        "breakdown": {"rm": 0.55, "dsp": 0.20, "opex": 0.20, "capex": 0.05},
+        "anchor_de": "Ethyllactat (grünes Lösungsmittel, Veresterung)",
+        "anchor_en": "ethyl lactate (green solvent, esterification)",
+    },
+    "diacetyl": {
+        "base_low": 5.0, "base_high": 15.0,
+        "breakdown": {"rm": 0.45, "dsp": 0.30, "opex": 0.20, "capex": 0.05},
+        "anchor_de": "Diacetyl (Food-Flavor, kleinerer Markt)",
+        "anchor_en": "diacetyl (food flavour, smaller market)",
+    },
+
+    # ---------- small_molecule / non_volatile (APIs + bulk chemicals) ----------
+    "vanillin": {
+        "base_low": 10.0, "base_high": 30.0,
+        "breakdown": {"rm": 0.45, "dsp": 0.25, "opex": 0.25, "capex": 0.05},
+        "anchor_de": "Synthese-Vanillin Bulk (Guaiacol/Glyoxylsäure, Borregaard/Solvay)",
+        "anchor_en": "synthetic vanillin bulk (guaiacol/glyoxylic acid, Borregaard/Solvay)",
+    },
+    "ibuprofen": {
+        "base_low": 10.0, "base_high": 25.0,
+        "breakdown": {"rm": 0.40, "dsp": 0.30, "opex": 0.25, "capex": 0.05},
+        "anchor_de": "Ibuprofen-API (BHC/Boots-Verfahren, Generika-Standard)",
+        "anchor_en": "ibuprofen API (BHC/Boots process, generic standard)",
+    },
+    "glucose": {
+        "base_low": 0.3, "base_high": 1.0,
+        "breakdown": {"rm": 0.60, "dsp": 0.15, "opex": 0.20, "capex": 0.05},
+        "anchor_de": "Glucose Welt-Commodity (Mais-/Weizenstärke-Hydrolyse)",
+        "anchor_en": "glucose world commodity (corn/wheat starch hydrolysis)",
+    },
+    "aspirin": {
+        "base_low": 5.0, "base_high": 15.0,
+        "breakdown": {"rm": 0.45, "dsp": 0.25, "opex": 0.25, "capex": 0.05},
+        "anchor_de": "Aspirin-API (Salicylsäure-Acetylierung, Generika-Standard)",
+        "anchor_en": "aspirin API (salicylic acid acetylation, generic standard)",
+    },
+    "citric acid": {
+        "base_low": 1.0, "base_high": 3.0,
+        "breakdown": {"rm": 0.45, "dsp": 0.25, "opex": 0.25, "capex": 0.05},
+        "anchor_de": "Citronensäure Welt-Commodity (Aspergillus niger Fermentation)",
+        "anchor_en": "citric acid world commodity (Aspergillus niger fermentation)",
+    },
+    "lactic acid": {
+        "base_low": 1.5, "base_high": 4.0,
+        "breakdown": {"rm": 0.45, "dsp": 0.25, "opex": 0.25, "capex": 0.05},
+        "anchor_de": "Milchsäure Bulk (Lactobacillus-Fermentation)",
+        "anchor_en": "lactic acid bulk (Lactobacillus fermentation)",
+    },
+    "succinic acid": {
+        "base_low": 2.0, "base_high": 6.0,
+        "breakdown": {"rm": 0.45, "dsp": 0.25, "opex": 0.25, "capex": 0.05},
+        "anchor_de": "Bernsteinsäure (Biobasierte Plattform, Reverdia/Myriant)",
+        "anchor_en": "succinic acid (bio-based platform, Reverdia/Myriant)",
+    },
+    "itaconic acid": {
+        "base_low": 4.0, "base_high": 12.0,
+        "breakdown": {"rm": 0.40, "dsp": 0.30, "opex": 0.25, "capex": 0.05},
+        "anchor_de": "Itakonsäure (Aspergillus terreus Fermentation)",
+        "anchor_en": "itaconic acid (Aspergillus terreus fermentation)",
+    },
+    "paracetamol": {
+        "base_low": 5.0, "base_high": 12.0,
+        "breakdown": {"rm": 0.45, "dsp": 0.25, "opex": 0.25, "capex": 0.05},
+        "anchor_de": "Paracetamol-API (p-Aminophenol-Acetylierung, Generika)",
+        "anchor_en": "paracetamol API (p-aminophenol acetylation, generic)",
+    },
+
+    # ---------- natural_product / alkaloid ----------
     "caffeine": {
         "base_low": 8.0, "base_high": 30.0,
         "breakdown": {"rm": 0.50, "dsp": 0.25, "opex": 0.20, "capex": 0.05},
-        "anchor_de": "Synthese-Caffeine (USP/Ph.Eur. Bulk, kommerziell etabliert)",
-        "anchor_en": "synthetic caffeine (USP/Ph.Eur. bulk, commercially established)",
+        "anchor_de": "Synthese-Caffeine (USP/Ph.Eur. Bulk, Traube-Synthese)",
+        "anchor_en": "synthetic caffeine (USP/Ph.Eur. bulk, Traube synthesis)",
     },
-    # Linalool: world-commodity (~30.000 t/a) priced at 10–30 €/kg in bulk
-    # (BASF/Symrise Citral-based semi-synthetic route). The generic
-    # terpene anchor (extraction or biotech) over-estimates by 5–50×.
-    # Source: BASF/Symrise public price benchmarks 2023; Bauer, Garbe,
-    # Surburg, Common Fragrance and Flavor Materials, 5th ed., Wiley-VCH
-    # 2006 (ISBN 978-3-527-31150-9).
+    "morphine": {
+        "base_low": 200.0, "base_high": 800.0,
+        "breakdown": {"rm": 0.30, "dsp": 0.40, "opex": 0.25, "capex": 0.05},
+        "anchor_de": "Morphin-API (P. somniferum-Extraktion, BtMG-/DEA-lizenziert)",
+        "anchor_en": "morphine API (P. somniferum extraction, controlled-substance)",
+    },
+    "codeine": {
+        "base_low": 150.0, "base_high": 600.0,
+        "breakdown": {"rm": 0.30, "dsp": 0.40, "opex": 0.25, "capex": 0.05},
+        "anchor_de": "Codein-API (Morphin-Methylierung oder direkte Extraktion)",
+        "anchor_en": "codeine API (morphine methylation or direct extraction)",
+    },
+    "atropine": {
+        "base_low": 500.0, "base_high": 2500.0,
+        "breakdown": {"rm": 0.30, "dsp": 0.40, "opex": 0.25, "capex": 0.05},
+        "anchor_de": "Atropin-API (Datura/Atropa-Extraktion oder Semisynthese)",
+        "anchor_en": "atropine API (Datura/Atropa extraction or semi-synthesis)",
+    },
+    "quinine": {
+        "base_low": 40.0, "base_high": 200.0,
+        "breakdown": {"rm": 0.40, "dsp": 0.35, "opex": 0.20, "capex": 0.05},
+        "anchor_de": "Chinin-API (Cinchona-Extraktion, Bulk)",
+        "anchor_en": "quinine API (Cinchona extraction, bulk)",
+    },
+
+    # ---------- natural_product / terpene ----------
     "linalool": {
         "base_low": 10.0, "base_high": 50.0,
         "breakdown": {"rm": 0.55, "dsp": 0.15, "opex": 0.25, "capex": 0.05},
-        "anchor_de": "Linalool Welt-Commodity (Citral-basiert semi-synthetisch)",
-        "anchor_en": "linalool world commodity (citral-based semi-synthetic)",
+        "anchor_de": "Linalool Welt-Commodity (Citral-basiert semi-synthetisch, BASF/Symrise)",
+        "anchor_en": "linalool world commodity (citral-based semi-synthetic, BASF/Symrise)",
     },
-    # Liraglutide: full SPPS for a 30-mer + γ-Glu-C16 lipidation is at
-    # the high end of peptide COGS, around 50–500 k€/kg API for classic
-    # SPPS and 10–50 k€/kg for semi-synthetic (recombinant backbone +
-    # chemical acylation). The default peptide/linear/chemical anchor
-    # (500–8000 €/kg) is correct for short peptides but 1–2 orders of
-    # magnitude too low here.
-    # Source: Knudsen et al., J. Med. Chem. 2000 (doi:10.1021/jm9909645);
-    # Bray BL., Nat. Rev. Drug Discov. 2003 (doi:10.1038/nrd1133).
+    "citral": {
+        "base_low": 12.0, "base_high": 40.0,
+        "breakdown": {"rm": 0.55, "dsp": 0.15, "opex": 0.25, "capex": 0.05},
+        "anchor_de": "Citral Welt-Commodity (BASF/Symrise, semi-synthetisch)",
+        "anchor_en": "citral world commodity (BASF/Symrise, semi-synthetic)",
+    },
+    "limonene": {
+        "base_low": 5.0, "base_high": 25.0,
+        "breakdown": {"rm": 0.50, "dsp": 0.20, "opex": 0.25, "capex": 0.05},
+        "anchor_de": "Limonen (Zitrusöl-Nebenprodukt, F&F-Bulk)",
+        "anchor_en": "limonene (citrus oil by-product, F&F bulk)",
+    },
+    "menthol": {
+        "base_low": 15.0, "base_high": 50.0,
+        "breakdown": {"rm": 0.50, "dsp": 0.20, "opex": 0.25, "capex": 0.05},
+        "anchor_de": "Menthol (BASF/Symrise/Takasago, Citronellal-Route)",
+        "anchor_en": "menthol (BASF/Symrise/Takasago, citronellal route)",
+    },
+    "geraniol": {
+        "base_low": 20.0, "base_high": 60.0,
+        "breakdown": {"rm": 0.55, "dsp": 0.20, "opex": 0.20, "capex": 0.05},
+        "anchor_de": "Geraniol (semi-synthetisch, Citronellol-Oxidation)",
+        "anchor_en": "geraniol (semi-synthetic, citronellol oxidation)",
+    },
+    "α-pinene": {
+        "base_low": 4.0, "base_high": 15.0,
+        "breakdown": {"rm": 0.55, "dsp": 0.20, "opex": 0.20, "capex": 0.05},
+        "anchor_de": "α-Pinen (Terpentinöl-Nebenprodukt der Zellstoff-Industrie)",
+        "anchor_en": "α-pinene (turpentine by-product of the pulp industry)",
+    },
+    "β-carotene": {
+        "base_low": 200.0, "base_high": 1500.0,
+        "breakdown": {"rm": 0.35, "dsp": 0.35, "opex": 0.25, "capex": 0.05},
+        "anchor_de": "β-Carotin (DSM/BASF synthetisch oder D. salina-Extraktion)",
+        "anchor_en": "β-carotene (DSM/BASF synthetic or D. salina extraction)",
+    },
+    "astaxanthin": {
+        "base_low": 500.0, "base_high": 3000.0,
+        "breakdown": {"rm": 0.30, "dsp": 0.45, "opex": 0.20, "capex": 0.05},
+        "anchor_de": "Astaxanthin (H. pluvialis Mikroalgen oder P. rhodozyma-Fermentation)",
+        "anchor_en": "astaxanthin (H. pluvialis microalgae or P. rhodozyma fermentation)",
+    },
+    "squalene": {
+        "base_low": 30.0, "base_high": 200.0,
+        "breakdown": {"rm": 0.45, "dsp": 0.30, "opex": 0.20, "capex": 0.05},
+        "anchor_de": "Squalen (Amaranth-Öl oder Hai-Leber-historisch; heute mikrobiell)",
+        "anchor_en": "squalene (amaranth oil or shark-liver-historic; now microbial)",
+    },
+    "artemisinin": {
+        "base_low": 200.0, "base_high": 800.0,
+        "breakdown": {"rm": 0.35, "dsp": 0.40, "opex": 0.20, "capex": 0.05},
+        "anchor_de": "Artemisinin (Amyris/Sanofi semi-synthetisch via Hefe + A. annua)",
+        "anchor_en": "artemisinin (Amyris/Sanofi semi-synthetic via yeast + A. annua)",
+    },
+
+    # ---------- peptide / linear (SPPS or recombinant) ----------
+    "glutathione": {
+        "base_low": 100.0, "base_high": 500.0,
+        "breakdown": {"rm": 0.40, "dsp": 0.35, "opex": 0.20, "capex": 0.05},
+        "anchor_de": "Glutathion Bulk (Hefe-Fermentation, Kohjin/Tanabe)",
+        "anchor_en": "glutathione bulk (yeast fermentation, Kohjin/Tanabe)",
+    },
+    "leu-enkephalin": {
+        "base_low": 5000.0, "base_high": 30000.0,
+        "breakdown": {"rm": 0.50, "dsp": 0.30, "opex": 0.15, "capex": 0.05},
+        "anchor_de": "Leu-Enkephalin (5-mer SPPS, Forschungs-/Spezialitäten-Grade)",
+        "anchor_en": "leu-enkephalin (5-mer SPPS, research / specialty grade)",
+    },
+    "met-enkephalin": {
+        "base_low": 5000.0, "base_high": 30000.0,
+        "breakdown": {"rm": 0.50, "dsp": 0.30, "opex": 0.15, "capex": 0.05},
+        "anchor_de": "Met-Enkephalin (5-mer SPPS, Forschungs-/Spezialitäten-Grade)",
+        "anchor_en": "met-enkephalin (5-mer SPPS, research / specialty grade)",
+    },
+    "bradykinin": {
+        "base_low": 8000.0, "base_high": 50000.0,
+        "breakdown": {"rm": 0.50, "dsp": 0.30, "opex": 0.15, "capex": 0.05},
+        "anchor_de": "Bradykinin (9-mer SPPS, Forschungs-/Spezialitäten-Grade)",
+        "anchor_en": "bradykinin (9-mer SPPS, research / specialty grade)",
+    },
+    "angiotensin ii": {
+        "base_low": 10000.0, "base_high": 60000.0,
+        "breakdown": {"rm": 0.50, "dsp": 0.30, "opex": 0.15, "capex": 0.05},
+        "anchor_de": "Angiotensin II (8-mer SPPS, Giapreza-API ähnlich)",
+        "anchor_en": "angiotensin II (8-mer SPPS, Giapreza-like API)",
+    },
+    "glucagon": {
+        "base_low": 50000.0, "base_high": 300000.0,
+        "breakdown": {"rm": 0.45, "dsp": 0.35, "opex": 0.15, "capex": 0.05},
+        "anchor_de": "Glucagon-API (29-mer SPPS oder rekombinant, Lilly/Novo)",
+        "anchor_en": "glucagon API (29-mer SPPS or recombinant, Lilly/Novo)",
+    },
+    "calcitonin": {
+        "base_low": 100000.0, "base_high": 500000.0,
+        "breakdown": {"rm": 0.45, "dsp": 0.40, "opex": 0.10, "capex": 0.05},
+        "anchor_de": "Lachs-Calcitonin (32-mer SPPS, Miacalcic-API)",
+        "anchor_en": "salmon calcitonin (32-mer SPPS, Miacalcic API)",
+    },
     "liraglutide": {
         "base_low": 50000.0, "base_high": 500000.0,
         "breakdown": {"rm": 0.40, "dsp": 0.40, "opex": 0.15, "capex": 0.05},
-        "anchor_de": "GLP-1-Analogon (30-mer + C16-Lipidierung, SPPS)",
-        "anchor_en": "GLP-1 analogue (30-mer + C16 lipidation, SPPS)",
+        "anchor_de": "Liraglutide (GLP-1-Analog, SPPS 30-mer + C16-Lipidierung)",
+        "anchor_en": "liraglutide (GLP-1 analogue, SPPS 30-mer + C16 lipidation)",
+    },
+    "teriparatide": {
+        "base_low": 200000.0, "base_high": 800000.0,
+        "breakdown": {"rm": 0.45, "dsp": 0.40, "opex": 0.10, "capex": 0.05},
+        "anchor_de": "Teriparatide (PTH 1–34, SPPS oder rekombinant, Forteo-API)",
+        "anchor_en": "teriparatide (PTH 1–34, SPPS or recombinant, Forteo API)",
+    },
+    "exenatide": {
+        "base_low": 50000.0, "base_high": 300000.0,
+        "breakdown": {"rm": 0.45, "dsp": 0.40, "opex": 0.10, "capex": 0.05},
+        "anchor_de": "Exenatide (GLP-1-Analog, SPPS 39-mer, Byetta-API)",
+        "anchor_en": "exenatide (GLP-1 analogue, SPPS 39-mer, Byetta API)",
+    },
+    "insulin": {
+        "base_low": 500.0, "base_high": 3000.0,
+        "breakdown": {"rm": 0.30, "dsp": 0.45, "opex": 0.20, "capex": 0.05},
+        "anchor_de": "Insulin-API (rekombinant E. coli/Hefe, Eli Lilly/Novo Nordisk)",
+        "anchor_en": "insulin API (recombinant E. coli/yeast, Lilly/Novo Nordisk)",
+    },
+
+    # ---------- peptide / cyclic (NRPS or SPPS+cyclisation) ----------
+    "cyclosporine": {
+        "base_low": 3000.0, "base_high": 30000.0,
+        "breakdown": {"rm": 0.20, "dsp": 0.50, "opex": 0.25, "capex": 0.05},
+        "anchor_de": "Ciclosporin (T. inflatum NRPS-Fermentation, Sandimmun-API)",
+        "anchor_en": "cyclosporine (T. inflatum NRPS fermentation, Sandimmune API)",
+    },
+    "gramicidin s": {
+        "base_low": 5000.0, "base_high": 25000.0,
+        "breakdown": {"rm": 0.25, "dsp": 0.50, "opex": 0.20, "capex": 0.05},
+        "anchor_de": "Gramicidin S (Bacillus brevis Fermentation)",
+        "anchor_en": "gramicidin S (Bacillus brevis fermentation)",
+    },
+    "bacitracin": {
+        "base_low": 1000.0, "base_high": 5000.0,
+        "breakdown": {"rm": 0.25, "dsp": 0.50, "opex": 0.20, "capex": 0.05},
+        "anchor_de": "Bacitracin (Bacillus licheniformis-Fermentation, Veterinär-Bulk)",
+        "anchor_en": "bacitracin (Bacillus licheniformis fermentation, veterinary bulk)",
+    },
+    "vancomycin": {
+        "base_low": 1000.0, "base_high": 8000.0,
+        "breakdown": {"rm": 0.25, "dsp": 0.50, "opex": 0.20, "capex": 0.05},
+        "anchor_de": "Vancomycin-API (Amycolatopsis orientalis Fermentation)",
+        "anchor_en": "vancomycin API (Amycolatopsis orientalis fermentation)",
+    },
+    "daptomycin": {
+        "base_low": 50000.0, "base_high": 250000.0,
+        "breakdown": {"rm": 0.20, "dsp": 0.55, "opex": 0.20, "capex": 0.05},
+        "anchor_de": "Daptomycin-API (Streptomyces roseosporus, Cubicin)",
+        "anchor_en": "daptomycin API (Streptomyces roseosporus, Cubicin)",
+    },
+    "octreotide": {
+        "base_low": 100000.0, "base_high": 500000.0,
+        "breakdown": {"rm": 0.50, "dsp": 0.35, "opex": 0.10, "capex": 0.05},
+        "anchor_de": "Octreotide (8-mer cyclisches SPPS-Peptid, Sandostatin-API)",
+        "anchor_en": "octreotide (8-mer cyclic SPPS peptide, Sandostatin API)",
+    },
+    "polymyxin b": {
+        "base_low": 1500.0, "base_high": 8000.0,
+        "breakdown": {"rm": 0.25, "dsp": 0.50, "opex": 0.20, "capex": 0.05},
+        "anchor_de": "Polymyxin B (B. polymyxa Fermentation, Last-Resort-Antibiotikum)",
+        "anchor_en": "polymyxin B (B. polymyxa fermentation, last-resort antibiotic)",
+    },
+    "colistin": {
+        "base_low": 1500.0, "base_high": 8000.0,
+        "breakdown": {"rm": 0.25, "dsp": 0.50, "opex": 0.20, "capex": 0.05},
+        "anchor_de": "Colistin (Polymyxin E, P. colistinus Fermentation)",
+        "anchor_en": "colistin (polymyxin E, P. colistinus fermentation)",
+    },
+    "caspofungin": {
+        "base_low": 30000.0, "base_high": 150000.0,
+        "breakdown": {"rm": 0.25, "dsp": 0.55, "opex": 0.15, "capex": 0.05},
+        "anchor_de": "Caspofungin (Echinocandin, Cancidas-API)",
+        "anchor_en": "caspofungin (echinocandin, Cancidas API)",
+    },
+    "anidulafungin": {
+        "base_low": 30000.0, "base_high": 150000.0,
+        "breakdown": {"rm": 0.25, "dsp": 0.55, "opex": 0.15, "capex": 0.05},
+        "anchor_de": "Anidulafungin (Echinocandin, Eraxis-API)",
+        "anchor_en": "anidulafungin (echinocandin, Eraxis API)",
+    },
+
+    # ---------- protein / antibody (mAbs, CHO-Fed-Batch) ----------
+    "adalimumab": {
+        "base_low": 50000.0, "base_high": 300000.0,
+        "breakdown": {"rm": 0.15, "dsp": 0.50, "opex": 0.25, "capex": 0.10},
+        "anchor_de": "Adalimumab (anti-TNFα IgG1, Humira-API, CHO-Fed-Batch)",
+        "anchor_en": "adalimumab (anti-TNFα IgG1, Humira API, CHO fed-batch)",
+    },
+    "trastuzumab": {
+        "base_low": 50000.0, "base_high": 300000.0,
+        "breakdown": {"rm": 0.15, "dsp": 0.50, "opex": 0.25, "capex": 0.10},
+        "anchor_de": "Trastuzumab (anti-HER2 IgG1, Herceptin-API, CHO-Fed-Batch)",
+        "anchor_en": "trastuzumab (anti-HER2 IgG1, Herceptin API, CHO fed-batch)",
+    },
+    "rituximab": {
+        "base_low": 50000.0, "base_high": 300000.0,
+        "breakdown": {"rm": 0.15, "dsp": 0.50, "opex": 0.25, "capex": 0.10},
+        "anchor_de": "Rituximab (anti-CD20 IgG1, MabThera-API, CHO-Fed-Batch)",
+        "anchor_en": "rituximab (anti-CD20 IgG1, MabThera API, CHO fed-batch)",
+    },
+    "bevacizumab": {
+        "base_low": 50000.0, "base_high": 250000.0,
+        "breakdown": {"rm": 0.15, "dsp": 0.50, "opex": 0.25, "capex": 0.10},
+        "anchor_de": "Bevacizumab (anti-VEGF IgG1, Avastin-API, CHO-Fed-Batch)",
+        "anchor_en": "bevacizumab (anti-VEGF IgG1, Avastin API, CHO fed-batch)",
+    },
+    "infliximab": {
+        "base_low": 50000.0, "base_high": 300000.0,
+        "breakdown": {"rm": 0.15, "dsp": 0.50, "opex": 0.25, "capex": 0.10},
+        "anchor_de": "Infliximab (chimerischer anti-TNFα, Remicade-API, SP2/0)",
+        "anchor_en": "infliximab (chimeric anti-TNFα, Remicade API, SP2/0)",
+    },
+    "pembrolizumab": {
+        "base_low": 100000.0, "base_high": 500000.0,
+        "breakdown": {"rm": 0.15, "dsp": 0.50, "opex": 0.25, "capex": 0.10},
+        "anchor_de": "Pembrolizumab (anti-PD-1 IgG4, Keytruda-API, Top-Onkologie)",
+        "anchor_en": "pembrolizumab (anti-PD-1 IgG4, Keytruda API, top oncology)",
+    },
+    "nivolumab": {
+        "base_low": 100000.0, "base_high": 500000.0,
+        "breakdown": {"rm": 0.15, "dsp": 0.50, "opex": 0.25, "capex": 0.10},
+        "anchor_de": "Nivolumab (anti-PD-1 IgG4, Opdivo-API, Top-Onkologie)",
+        "anchor_en": "nivolumab (anti-PD-1 IgG4, Opdivo API, top oncology)",
+    },
+    "cetuximab": {
+        "base_low": 100000.0, "base_high": 400000.0,
+        "breakdown": {"rm": 0.15, "dsp": 0.50, "opex": 0.25, "capex": 0.10},
+        "anchor_de": "Cetuximab (chimerischer anti-EGFR, Erbitux-API, SP2/0)",
+        "anchor_en": "cetuximab (chimeric anti-EGFR, Erbitux API, SP2/0)",
+    },
+    "pertuzumab": {
+        "base_low": 100000.0, "base_high": 400000.0,
+        "breakdown": {"rm": 0.15, "dsp": 0.50, "opex": 0.25, "capex": 0.10},
+        "anchor_de": "Pertuzumab (anti-HER2-Dimerisierung, Perjeta-API, CHO)",
+        "anchor_en": "pertuzumab (anti-HER2 dimerisation, Perjeta API, CHO)",
+    },
+    "daratumumab": {
+        "base_low": 100000.0, "base_high": 500000.0,
+        "breakdown": {"rm": 0.15, "dsp": 0.50, "opex": 0.25, "capex": 0.10},
+        "anchor_de": "Daratumumab (anti-CD38, Darzalex-API, CHO-Fed-Batch)",
+        "anchor_en": "daratumumab (anti-CD38, Darzalex API, CHO fed-batch)",
+    },
+    "etanercept": {
+        # Fusion protein, formally protein/antibody in this DB
+        "base_low": 80000.0, "base_high": 400000.0,
+        "breakdown": {"rm": 0.15, "dsp": 0.55, "opex": 0.20, "capex": 0.10},
+        "anchor_de": "Etanercept (TNFR-Fc-Fusion, Enbrel-API, CHO)",
+        "anchor_en": "etanercept (TNFR-Fc fusion, Enbrel API, CHO)",
+    },
+
+    # ---------- protein / enzyme (industrial enzymes + recombinant therapeutics) ----------
+    "amylase": {
+        "base_low": 10.0, "base_high": 50.0,
+        "breakdown": {"rm": 0.30, "dsp": 0.20, "opex": 0.40, "capex": 0.10},
+        "anchor_de": "α-Amylase Industrieenzym (Novozymes Termamyl, Bacillus)",
+        "anchor_en": "α-amylase industrial enzyme (Novozymes Termamyl, Bacillus)",
+    },
+    "lipase": {
+        "base_low": 30.0, "base_high": 150.0,
+        "breakdown": {"rm": 0.30, "dsp": 0.25, "opex": 0.35, "capex": 0.10},
+        "anchor_de": "Lipase Industrieenzym (Novozymes Lipozyme/CalB, A. oryzae)",
+        "anchor_en": "lipase industrial enzyme (Novozymes Lipozyme/CalB, A. oryzae)",
+    },
+    "protease": {
+        "base_low": 20.0, "base_high": 100.0,
+        "breakdown": {"rm": 0.30, "dsp": 0.25, "opex": 0.35, "capex": 0.10},
+        "anchor_de": "Protease Industrieenzym (Novozymes/DSM, Detergens-Grade)",
+        "anchor_en": "protease industrial enzyme (Novozymes/DSM, detergent grade)",
+    },
+    "cellulase": {
+        "base_low": 20.0, "base_high": 100.0,
+        "breakdown": {"rm": 0.30, "dsp": 0.25, "opex": 0.35, "capex": 0.10},
+        "anchor_de": "Cellulase (Novozymes Cellic, T. reesei)",
+        "anchor_en": "cellulase (Novozymes Cellic, T. reesei)",
+    },
+    "lactase": {
+        "base_low": 50.0, "base_high": 200.0,
+        "breakdown": {"rm": 0.30, "dsp": 0.30, "opex": 0.30, "capex": 0.10},
+        "anchor_de": "Lactase (β-Galactosidase, K. lactis-Fermentation, Food-Grade)",
+        "anchor_en": "lactase (β-galactosidase, K. lactis fermentation, food grade)",
+    },
+    "glucoamylase": {
+        "base_low": 15.0, "base_high": 80.0,
+        "breakdown": {"rm": 0.30, "dsp": 0.25, "opex": 0.35, "capex": 0.10},
+        "anchor_de": "Glucoamylase (A. niger-Fermentation, Stärke-Industrie)",
+        "anchor_en": "glucoamylase (A. niger fermentation, starch industry)",
+    },
+    "phytase": {
+        "base_low": 20.0, "base_high": 100.0,
+        "breakdown": {"rm": 0.30, "dsp": 0.25, "opex": 0.35, "capex": 0.10},
+        "anchor_de": "Phytase (Tier-Feed-Additiv, A. niger / P. pastoris)",
+        "anchor_en": "phytase (animal feed additive, A. niger / P. pastoris)",
+    },
+    "glucose isomerase": {
+        "base_low": 50.0, "base_high": 200.0,
+        "breakdown": {"rm": 0.25, "dsp": 0.30, "opex": 0.35, "capex": 0.10},
+        "anchor_de": "Glucose-Isomerase (immobilisiert, HFCS-Produktion)",
+        "anchor_en": "glucose isomerase (immobilised, HFCS production)",
+    },
+    "pectinase": {
+        "base_low": 30.0, "base_high": 150.0,
+        "breakdown": {"rm": 0.30, "dsp": 0.30, "opex": 0.30, "capex": 0.10},
+        "anchor_de": "Pektinase (A. niger, Saft-/Wein-Industrie)",
+        "anchor_en": "pectinase (A. niger, juice/wine industry)",
+    },
+    "asparaginase": {
+        "base_low": 100.0, "base_high": 500.0,
+        "breakdown": {"rm": 0.30, "dsp": 0.40, "opex": 0.20, "capex": 0.10},
+        "anchor_de": "Asparaginase (E. coli/E. carotovora, ALL-Pharmazeutikum)",
+        "anchor_en": "asparaginase (E. coli/E. carotovora, ALL pharmaceutical)",
+    },
+    "erythropoietin": {
+        # Recombinant therapeutic — priced like a biologic, not like an
+        # industrial enzyme. Classified as "enzyme" in the DB but behaves
+        # as a biologic for COGS purposes.
+        "base_low": 100000.0, "base_high": 500000.0,
+        "breakdown": {"rm": 0.15, "dsp": 0.50, "opex": 0.25, "capex": 0.10},
+        "anchor_de": "Erythropoietin (rekombinant CHO, Epogen/Eprex-API)",
+        "anchor_en": "erythropoietin (recombinant CHO, Epogen/Eprex API)",
+    },
+    "filgrastim": {
+        "base_low": 50000.0, "base_high": 250000.0,
+        "breakdown": {"rm": 0.15, "dsp": 0.55, "opex": 0.20, "capex": 0.10},
+        "anchor_de": "Filgrastim (G-CSF, rekombinant E. coli, Neupogen-API)",
+        "anchor_en": "filgrastim (G-CSF, recombinant E. coli, Neupogen API)",
+    },
+    "somatropin": {
+        "base_low": 30000.0, "base_high": 150000.0,
+        "breakdown": {"rm": 0.15, "dsp": 0.55, "opex": 0.20, "capex": 0.10},
+        "anchor_de": "Somatropin (hGH, rekombinant E. coli, Genotropin-API)",
+        "anchor_en": "somatropin (hGH, recombinant E. coli, Genotropin API)",
     },
 }
 
