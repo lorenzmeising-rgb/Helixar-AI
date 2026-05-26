@@ -321,7 +321,37 @@ def show_start_page():
     st.title(t("app_title"))
     st.caption(t("app_caption"))
 
-    # New: process-optimization input form
+    # Mode toggle: regular recommendation vs. process comparison.
+    # Both flows share the molecule input but produce different outputs
+    # (single-route recommendation PDF vs. multi-route comparison PDF).
+    _mode_keys = ["recommendation", "comparison"]
+    _mode_labels = {
+        "recommendation": f"✨  {t('mode_recommendation_label')}",
+        "comparison":     f"📊  {t('mode_comparison_label')}",
+    }
+    selected_mode = st.radio(
+        t("mode_selector_label"),
+        options=_mode_keys,
+        format_func=lambda k: _mode_labels[k],
+        horizontal=True,
+        key="start_page_mode",
+        label_visibility="collapsed",
+    )
+    # Short caption that explains what each mode produces
+    _mode_captions = {
+        "recommendation": t("mode_recommendation_caption"),
+        "comparison":     t("mode_comparison_caption"),
+    }
+    st.caption(_mode_captions[selected_mode])
+    st.markdown("---")
+
+    # Branch: comparison mode → render the dedicated comparison flow
+    # inline (re-uses show_comparison_page()) and return early.
+    if selected_mode == "comparison":
+        show_comparison_page(_skip_title=True)
+        return
+
+    # ----- Recommendation flow (original behaviour) -----
     st.subheader(t("describe_process_header"))
     st.markdown(t("describe_process_intro"))
     # Show autofill notice (if autofill recently occurred)
@@ -1877,11 +1907,17 @@ def show_overview_page():
             st.rerun()
 
 
-def show_comparison_page():
+def show_comparison_page(_skip_title: bool = False):
     """Process Comparison — select a molecule and produce a dedicated
     comparison PDF that scores all viable production routes
-    side-by-side and ends with a quantified recommendation."""
-    st.title(t("comparison_page_title"))
+    side-by-side and ends with a quantified recommendation.
+
+    When called from the recommendation page's mode toggle, set
+    `_skip_title=True` to avoid rendering the duplicate page title
+    (the parent page already shows the app title and step indicator).
+    """
+    if not _skip_title:
+        st.title(t("comparison_page_title"))
     st.caption(t("comparison_page_intro"))
     st.markdown("<div style='height:14px;'></div>", unsafe_allow_html=True)
 
@@ -2342,11 +2378,10 @@ with st.sidebar:
     st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
 
 # Icon-prefixed navigation labels
-_nav_keys = ["home", "generate", "comparison", "demos", "feedback", "settings"]
+_nav_keys = ["home", "generate", "demos", "feedback", "settings"]
 _nav_label_keys = {
     "home": "nav_home",
     "generate": "nav_generate",
-    "comparison": "nav_comparison",
     "demos": "nav_demos",
     "feedback": "nav_feedback",
     "settings": "nav_settings",
@@ -2354,7 +2389,6 @@ _nav_label_keys = {
 _nav_icons = {
     "home": "🏠",
     "generate": "✨",
-    "comparison": "📊",
     "demos": "🧬",
     "feedback": "💬",
     "settings": "⚙️",
@@ -2399,8 +2433,6 @@ else:
         show_landing_page()
     elif page == "generate":
         show_start_page()
-    elif page == "comparison":
-        show_comparison_page()
     elif page == "demos":
         show_demos_page()
     elif page == "feedback":

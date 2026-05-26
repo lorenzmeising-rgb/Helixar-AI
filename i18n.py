@@ -434,8 +434,27 @@ TRANSLATIONS = {
     },
     "your_inputs_header": {"de": "Ihre Eingaben", "en": "Your inputs"},
 
-    # Sidebar navigation — new "Process Comparison" entry
-    "nav_comparison": {"de": "Prozessvergleich", "en": "Process Comparison"},
+    # Mode toggle on the Start (Empfehlung generieren) page
+    "mode_selector_label": {
+        "de": "Analyse-Modus",
+        "en": "Analysis mode",
+    },
+    "mode_recommendation_label": {
+        "de": "Empfehlung generieren",
+        "en": "Generate recommendation",
+    },
+    "mode_recommendation_caption": {
+        "de": "Detaillierter Einzelrouten-Report mit Konkrete Empfehlungen, Risiken, COGS-Modell und Quellen.",
+        "en": "Detailed single-route report with concrete recommendations, risks, COGS model and sources.",
+    },
+    "mode_comparison_label": {
+        "de": "Prozessvergleich",
+        "en": "Process Comparison",
+    },
+    "mode_comparison_caption": {
+        "de": "Vergleicht alle plausiblen Produktionsrouten für dieses Molekül parallel und liefert eine quantifizierte Engine-Empfehlung.",
+        "en": "Compares all plausible production routes for this molecule in parallel and delivers a quantified engine recommendation.",
+    },
 
     # Process Comparison page
     "comparison_page_title": {
