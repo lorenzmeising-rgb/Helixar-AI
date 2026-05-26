@@ -332,6 +332,70 @@ _PHRASE_RULES = [
     # extra defensive variants (subject-verb mismatch seen in audit: "processes is")
     (r"^Extraction processes is likely to have low yield and high variability\.?$",
      r"Extraktionsprozesse haben oft niedrige Ausbeute und hohe Variabilität"),
+
+    # ============================================================
+    # P6 fix: trade-off strings emitted by decision_engine.py
+    # (generic, subtype-specific and refined). All previously leaked
+    # in English when rendered in DE mode.
+    # ============================================================
+
+    # Generic tradeoffs (lines ~2242-2298 in decision_engine.py)
+    (r"^High purity requirement combined with difficult purification significantly increases cost and risk\.?$",
+     r"Hoher Reinheitsanspruch in Kombination mit schwieriger Aufarbeitung erhöht Kosten und Risiko deutlich"),
+    (r"^Higher purity combined with structurally difficult purification raises cost by one notch\.?$",
+     r"Höhere Reinheit kombiniert mit strukturell schwieriger Aufreinigung hebt die Kosten um eine Stufe"),
+    (r"^Complex molecule plus many steps reduces efficiency and increases cost\.?$",
+     r"Komplexes Molekül plus viele Schritte — reduziert Effizienz und erhöht Kosten"),
+    (r"^Low molecular stability increases scale-up risk and may require additional controls\.?$",
+     r"Geringe molekulare Stabilität erhöht das Scale-up-Risiko und erfordert ggf. zusätzliche Prozess-Kontrollen"),
+    (r"^High step count reduces scalability and increases cost at industrial scale\.?$",
+     r"Hohe Schrittzahl reduziert die Skalierbarkeit und erhöht die Kosten im industriellen Maßstab"),
+    (r"^High inherent toxicity combined with strict waste rules raises compliance and disposal cost\.?$",
+     r"Hohe inhärente Toxizität in Kombination mit strengen Abfallauflagen erhöht Compliance- und Entsorgungskosten"),
+    (r"^High raw material cost combined with structural complexity drives unit economics worsely\.?$",
+     r"Hohe Rohstoffkosten in Kombination mit struktureller Komplexität verschlechtern die Stückkosten-Bilanz"),
+    (r"^Simplifying structure or route may reduce cost but requires alternative synthesis strategies\.?$",
+     r"Eine Vereinfachung der Struktur oder Route kann Kosten senken, erfordert aber alternative Synthese-Strategien"),
+
+    # mAb-specific tradeoffs (lines ~2307-2309)
+    (r"^Higher CHO titer vs\.? glycosylation profile.*$",
+     r"Höhere CHO-Titer vs. Glykosylierungs-Profil — zu hoher Titer-Druck verschiebt die Glykoform-Verteilung aus der Spezifikation"),
+    (r"^Shorter fed-batch cycle vs\.? aggregate level.*$",
+     r"Kürzerer Fed-Batch-Zyklus vs. Aggregat-Anteil — frühe Ernte reduziert Aggregate, kostet aber Titer; Balance via Temperatur-Shift-Timing"),
+    (r"^Single-use vs\.? stainless.*$",
+     r"Single-Use vs. Edelstahl — Single-Use spart CIP-/Validierungs-Kosten, erhöht aber Verbrauchsmaterial und Lieferketten-Abhängigkeit"),
+
+    # Enzyme-specific tradeoffs (lines ~2311-2312)
+    (r"^Activity per gram vs\.? stability.*$",
+     r"Aktivität pro Gramm vs. Stabilität — höhere spezifische Aktivität korreliert oft mit niedrigerer thermischer/Lösungsmittel-Stabilität"),
+    (r"^Free enzyme vs\.? immobili[sz]ed.*$",
+     r"Freies Enzym vs. immobilisiert — Immobilisierung vereinfacht die Rückgewinnung, erhöht aber Matrix-Kosten und kann die spezifische Aktivität senken"),
+
+    # Peptide/linear-specific tradeoffs (lines ~2314-2315)
+    (r"^Full SPPS vs\.? semi-synthetic.*$",
+     r"Voll-SPPS vs. semi-synthetisch (rekombinantes Rückgrat + chemische Acylierung) — Voll-SPPS ist schneller in der Entwicklung, aber teurer im Maßstab"),
+    (r"^Coupling reagent \(HBTU/HATU/COMU\) vs\.? yield/cost.*$",
+     r"Coupling-Reagenz (HBTU/HATU/COMU) vs. Ausbeute/Kosten — HATU ist am effizientesten, aber am teuersten; HBTU ist der Standard-Kompromiss"),
+
+    # Peptide/cyclic-specific tradeoffs (lines ~2317-2318)
+    (r"^Native fermentation \(NRPS\) vs\.? semi-synthesis.*$",
+     r"Native Fermentation (NRPS) vs. Semi-Synthese — Fermentation ist die einzige realistische Route für nicht-proteinogene AS, hat aber lange Stamm-Entwicklungszyklen"),
+    (r"^Strain engineering vs\.? titer.*$",
+     r"Stamm-Engineering vs. Titer — Stammverbesserung kann den Titer vervielfachen, erfordert aber 12–24 Monate dedizierter Arbeit"),
+
+    # Natural-product-specific tradeoffs (lines ~2320-2321)
+    (r"^Wild-collected vs\.? cultivated raw material.*$",
+     r"Wild-gesammeltes vs. kultiviertes Rohmaterial — wild kann höheren API-Gehalt liefern, bringt aber Lieferketten- und Regulatorik-Risiko (z. B. CITES für einige Terpene)"),
+    (r"^Solvent choice vs\.? yield.*$",
+     r"Lösungsmittel-Wahl vs. Ausbeute — grünere Lösungsmittel (Wasser, Ethanol, scCO₂) senken Compliance-Kosten, reduzieren aber oft die Extraktions-Ausbeute"),
+
+    # Refined tradeoffs (lines ~2874-2878)
+    (r"^Very high purity targets require extended polishing \(HPLC/chromatography\), increasing solvent/buffer consumption and cycle time\.?$",
+     r"Sehr hohe Reinheitsziele erfordern verlängertes Polishing (HPLC/Chromatographie) und erhöhen Lösungsmittel-/Puffer-Verbrauch sowie Zykluszeit"),
+    (r"^Reducing synthesis steps lowers operational cost and cycle time but may require novel reagents or convergent routes that increase raw material expenses\.?$",
+     r"Schritt-Reduktion senkt Betriebskosten und Zykluszeit, kann aber neue Reagenzien oder konvergente Routen erfordern, die die Rohstoffkosten erhöhen"),
+    (r"^Low molecular stability at industrial scale increases degradation risk, requiring tighter control and chilled holds which raise CAPEX/OPEX\.?$",
+     r"Geringe molekulare Stabilität im industriellen Maßstab erhöht das Degradationsrisiko — engere Prozesskontrolle und gekühlte Haltezeiten treiben CAPEX/OPEX"),
 ]
 
 

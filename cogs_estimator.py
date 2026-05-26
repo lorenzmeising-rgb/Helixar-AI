@@ -804,11 +804,31 @@ def estimate_cogs(process_input: Dict[str, Any]) -> Dict[str, Any]:
     # (Bug H8 fix: avoids misleading ranges for outlier molecules).
     anchor = _MOLECULE_COGS_OVERRIDES.get(mname)
     is_override = anchor is not None
+    cluster_fallback = False  # P4 fix: track when we're using the generic cluster
     if anchor is None:
         anchor = _ANCHORS.get((mtype, msub, method))
+        if anchor is not None:
+            cluster_fallback = True
     confidence = "high"
     fallback_note_de: Optional[str] = None
     fallback_note_en: Optional[str] = None
+
+    # P4 fix: if molecule not in the calibrated 79er-list, demote confidence
+    # to "medium" and surface a banner-style note. This prevents the
+    # Vanillin-class bug (wide cluster range) from being read by pilots as
+    # a high-confidence per-molecule answer.
+    if cluster_fallback and mname:
+        confidence = "medium"
+        fallback_note_de = (
+            f"Cluster-Schätzung für '{mname}' — kein per-Molekül-Anker "
+            f"hinterlegt. Spanne ist branchen-typisch für {mtype}/{msub}/"
+            f"{method}, nicht molekül-spezifisch kalibriert."
+        )
+        fallback_note_en = (
+            f"Cluster estimate for '{mname}' — no per-molecule anchor "
+            f"on file. Range is industry-typical for {mtype}/{msub}/"
+            f"{method}, not molecule-specific calibration."
+        )
 
     if anchor is None:
         # Try anchor with method swap (chemical→biotechnological etc.)

@@ -126,6 +126,42 @@ def _confidence_label(conf: Optional[Any]) -> str:
     return "niedrig"
 
 
+def _cogs_fallback_banner_text(cogs_result: Optional[Dict[str, Any]],
+                               lang: str) -> Optional[str]:
+    """Build a banner-style warning text for low/medium-confidence COGS
+    estimates that fall back to the generic cluster anchor (P4 fix).
+
+    Returns None when the COGS estimate uses a per-molecule override
+    (i.e. is well-calibrated) — no banner needed in that case.
+    """
+    if not isinstance(cogs_result, dict):
+        return None
+    conf = str(cogs_result.get("confidence") or "").lower()
+    if conf == "high":
+        return None  # per-molecule override is calibrated → no banner
+
+    notes_key = "notes_en" if lang == "en" else "notes_de"
+    note = cogs_result.get(notes_key) or ""
+    # We only banner the cluster-fallback case; the method-swap branch
+    # already has its own "große Unsicherheit" wording in the note.
+    cluster_marker_de = "Cluster-Schätzung"
+    cluster_marker_en = "Cluster estimate"
+    is_cluster_fallback = (cluster_marker_de in (cogs_result.get("notes_de") or "")
+                           or cluster_marker_en in (cogs_result.get("notes_en") or ""))
+    if not is_cluster_fallback:
+        return None
+
+    if lang == "en":
+        return ("Cluster estimate — no per-molecule anchor on file. "
+                "The COGS range is industry-typical for the subtype/method "
+                "combination, not specifically calibrated for this molecule. "
+                "Treat as a directional indicator.")
+    return ("Cluster-Schätzung — kein per-Molekül-Anker hinterlegt. "
+            "Die COGS-Spanne ist branchen-typisch für die Subtype/Methoden-"
+            "Kombination, nicht molekül-spezifisch kalibriert. "
+            "Als Orientierungsgröße zu lesen.")
+
+
 def generate_report(blueprint: Dict[str, Any]) -> str:
     """Generate a concise, German plain-text executive report from a blueprint.
 
@@ -613,6 +649,8 @@ def export_report_pdf(
         _bench = get_benchmarks(
             input_params.get("molecule_type") or "",
             input_params.get("molecule_subtype") or "",
+            method=input_params.get("method"),
+            molecule_name=input_params.get("molecule_name"),
         )
         if _bench:
             _bench_cogs = fmt_cogs_comparison(
@@ -676,6 +714,21 @@ def export_report_pdf(
             f"<para alignment='center'><font size='7' color='#A0B0C2'><i>"
             f"{'Benchmark source' if lang == 'en' else 'Benchmark-Quelle'}: "
             f"{_to_pdf_safe(str(_bench_src))}</i></font></para>",
+            normal,
+        ))
+
+    # P4 fix: banner-style warning when COGS falls back to the generic cluster
+    # (no per-molecule anchor on file). Pilots see immediately that the
+    # range is directional, not calibrated.
+    _fallback_banner = _cogs_fallback_banner_text(_cogs_one, lang)
+    if _fallback_banner:
+        elems.append(Spacer(1, 6))
+        elems.append(Paragraph(
+            f"<para alignment='center' backColor='#FFF6E0' borderColor='#E0A82E' "
+            f"borderWidth='0.8' borderPadding='6'>"
+            f"<font size='8' color='#7A5A00'><b>"
+            f"{'⚠ ' if True else ''}{_to_pdf_safe(_fallback_banner)}"
+            f"</b></font></para>",
             normal,
         ))
     elems.append(Spacer(1, 18))
@@ -1200,6 +1253,19 @@ def export_report_pdf(
             f'<font color="{_muted}" size="9">({conf_text} — {anchor_text})</font>',
             normal,
         ))
+        # P4 fix: banner-style warning for cluster-fallback estimates so
+        # pilots reading the executive summary don't mistake a wide
+        # cluster spread for a calibrated per-molecule answer.
+        _exec_fallback = _cogs_fallback_banner_text(cogs_result, lang)
+        if _exec_fallback:
+            elems.append(Spacer(1, 4))
+            elems.append(Paragraph(
+                f"<para backColor='#FFF6E0' borderColor='#E0A82E' "
+                f"borderWidth='0.8' borderPadding='6'>"
+                f"<font size='8' color='#7A5A00'><b>⚠ {_to_pdf_safe(_exec_fallback)}"
+                f"</b></font></para>",
+                normal,
+            ))
 
     elems.append(Spacer(1, 12))
 

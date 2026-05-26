@@ -53,13 +53,45 @@ class DecisionEngine:
             return pd.Series([0.5] * len(s), index=s.index)
         return ((numeric - mn) / (mx - mn)).fillna(0.0)
 
-    @staticmethod
-    def _resolve_scale_label(p: Dict[str, Any]) -> str:
+    # P5 fix: subtype-specific scale thresholds — the one-size-fits-all
+    # 1/1000 kg-Schwelle classified Trastuzumab @ 100 kg/yr as "pilot"
+    # (it's industrial for a mAb) and Ethanol @ 5000 kg/yr as "industrial"
+    # (it's still pilot for a bulk solvent). Format:
+    #   (type, subtype) → (lab_max_kg_yr, pilot_max_kg_yr)
+    # Anything ≥ pilot_max is industrial; below lab_max is lab.
+    # Anchors:
+    #   - Walsh G., Nat. Biotechnol. 2018 (mAb production volumes ~kg-tons)
+    #   - Federsel HJ., Nat. Rev. Drug Discov. 2005 (small-mol APIs)
+    #   - Chapman et al., Catalysts 2018 (industrial enzymes, multi-ton)
+    _SUBTYPE_SCALE_THRESHOLDS: Dict[tuple, tuple] = {
+        ("small_molecule", "volatile"):     (10.0, 10_000.0),   # bulk solvents
+        ("small_molecule", "non_volatile"): (0.1, 1_000.0),     # APIs
+        ("natural_product", "alkaloid"):    (0.1, 100.0),
+        ("natural_product", "terpene"):     (1.0, 1_000.0),
+        ("peptide", "linear"):              (0.01, 10.0),       # SPPS/rec.
+        ("peptide", "cyclic"):              (0.01, 10.0),
+        ("protein", "antibody"):            (0.001, 10.0),      # mAb: kg/yr is industrial
+        ("protein", "enzyme"):              (1.0, 1_000.0),     # industrial enzymes
+    }
+    # Per-molecule overrides for therapeutic proteins that share the
+    # "protein/enzyme" subtype but have totally different volume profiles
+    # (Erythropoietin global market ~ a few kg/yr, not tons).
+    _MOLECULE_SCALE_THRESHOLDS: Dict[str, tuple] = {
+        "erythropoietin": (0.001, 1.0),
+        "filgrastim":     (0.001, 1.0),
+        "somatropin":     (0.001, 1.0),
+        "asparaginase":   (0.001, 10.0),
+    }
+
+    @classmethod
+    def _resolve_scale_label(cls, p: Dict[str, Any]) -> str:
         """Robust scale-label resolution.
 
         Priority:
           1. p['scale'] if explicitly given as 'lab' / 'pilot' / 'industrial'
-          2. derived from p['scale_kg_per_year'] when numeric
+          2. derived from p['scale_kg_per_year'] using subtype-specific
+             thresholds when available, otherwise the generic 1/1000 default
+             (P5 fix — see _SUBTYPE_SCALE_THRESHOLDS).
 
         Returns one of 'lab', 'pilot', 'industrial'. Falls back to 'pilot' for
         unknown numeric values rather than 'lab', because 'lab' was the silent
@@ -73,15 +105,26 @@ class DecisionEngine:
         kg = p.get("scale_kg_per_year")
         try:
             if kg is None:
-                return "pilot"  # sane default rather than the previous silent "lab"
-            kgf = float(kg)
-            if kgf >= 1000.0:
-                return "industrial"
-            if kgf >= 1.0:
                 return "pilot"
-            return "lab"
+            kgf = float(kg)
         except (TypeError, ValueError):
             return "pilot"
+
+        # Pick subtype-specific thresholds when the molecule is recognised.
+        mname = str(p.get("molecule_name") or "").lower().strip()
+        mtype = str(p.get("molecule_type") or "").lower().strip()
+        msub = str(p.get("molecule_subtype") or "").lower().strip()
+        lab_max, pilot_max = 1.0, 1000.0  # generic fallback
+        if mname in cls._MOLECULE_SCALE_THRESHOLDS:
+            lab_max, pilot_max = cls._MOLECULE_SCALE_THRESHOLDS[mname]
+        elif (mtype, msub) in cls._SUBTYPE_SCALE_THRESHOLDS:
+            lab_max, pilot_max = cls._SUBTYPE_SCALE_THRESHOLDS[(mtype, msub)]
+
+        if kgf >= pilot_max:
+            return "industrial"
+        if kgf >= lab_max:
+            return "pilot"
+        return "lab"
 
     @staticmethod
     def _scale_intensity(p: Dict[str, Any]) -> float:

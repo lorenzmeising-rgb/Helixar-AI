@@ -156,12 +156,68 @@ def build_process_input(db_entry: Dict[str, Any]) -> Dict[str, Any]:
 
 BAD_UNICODE_PATTERNS = ["₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉", "₀", "■"]
 
+# P6 fix: extended translation-leak patterns. Patterns must be unambiguously
+# English (i.e. they would not appear in a well-written German PDF). The
+# audit pre-strips citation lines (DOI / ISBN / et al.) before applying the
+# linter so that English-language references don't false-positive.
 ENGLISH_LEAK_PATTERNS = [
+    # Original (kept)
     r"\bthe\s+(?:process|molecule|method|recommendation)\b",
     r"\bproduction\s+steps?\b",
-    r"\bplease\s+(?:note|consider)\b",
-    r"\bThis\s+(?:is|requires|will)\b",
+    r"\bplease\s+(?:note|consider|review)\b",
+    r"\bThis\s+(?:is|requires|will|may)\b",
+    # P6 — modal/auxiliary chains that engine rules emit
+    r"\b(?:should|must|will|may)\s+(?:be|consider|require|need|increase|decrease|reduce)\b",
+    # P6 — common English connectors
+    r"\bdue\s+to\b",
+    r"\bsuch\s+as\b",
+    r"\bcompared\s+to\b",
+    r"\bin\s+addition\s+to\b",
+    r"\bin\s+order\s+to\b",
+    # P6 — English adjective+noun combos
+    r"\b(?:high|low|medium)\s+(?:efficiency|risk|yield)\b",
+    r"\b(?:expected|estimated)\s+(?:yield|purity|method)\b",
+    r"\bproduction\s+(?:cost|route|sequence)\b",
+    r"\bstep[s]?\s+(?:required|recommended)\b",
+    # P6 — English copula constructions
+    r"\bis\s+(?:required|recommended|necessary|critical|important)\b",
+    r"\bare\s+(?:required|recommended|necessary)\b",
+    # P6 — adverbs that mark English narrative
+    r"\b(?:significantly|substantially|generally)\s+(?:higher|lower|better|worse)\b",
+    r"\bbased\s+on\b",
+    r"\bcan\s+(?:be|cause|lead)\b",
 ]
+
+# Citation-line markers — lines containing any of these tokens are removed
+# before the English-leak linter runs, because real DOI/ISBN references are
+# English and would otherwise produce a flood of false positives.
+_CITATION_LINE_RE = re.compile(
+    r"\b(?:doi:|isbn[\s:-]|et al\.|vol\.\s*\d|pp\.\s*\d|"
+    r"nat\.\s+(?:biotechnol|rev|prod)|j\.\s+(?:am|biol|med|nat)|"
+    r"wiley|springer|elsevier|nature\b|science\b|"
+    r"ullmann|annu\.\s+rev|appl\.\s+microbiol|chem\.\s+rev|"
+    r"crit\.\s+rev|topics\s+in|trends\s+in|MAbs\b|"
+    r"©\s*\d{4}|\(\s*\d{4}\s*\))",
+    flags=re.IGNORECASE,
+)
+
+
+def _strip_citation_lines(text: str) -> str:
+    """Return *text* with lines that look like literature citations removed.
+
+    The English-leak linter applies to the remaining lines only — so a
+    legitimate "Walsh G., Nat. Biotechnol. 2018 — should be …" reference
+    does not get flagged just because the journal/year line looks like
+    English narrative.
+    """
+    if not text:
+        return ""
+    kept = []
+    for line in text.splitlines():
+        if _CITATION_LINE_RE.search(line):
+            continue
+        kept.append(line)
+    return "\n".join(kept)
 
 
 def extract_pdf_text(pdf_path: Path) -> str:
@@ -200,10 +256,23 @@ def lint_extended(
         if ch in pdf_text:
             add("error", "bad_unicode", f"Char {ch!r} (U+{ord(ch):04X}) leaks into PDF")
 
+    # P6 fix: lint the citation-stripped text so DOI/ISBN reference blocks
+    # don't false-positive on the (legitimately English) journal names and
+    # narrative.
+    _lintable_text = _strip_citation_lines(pdf_text)
     for pat in ENGLISH_LEAK_PATTERNS:
-        m = re.findall(pat, pdf_text, flags=re.IGNORECASE)
+        m = re.findall(pat, _lintable_text, flags=re.IGNORECASE)
         if m:
-            add("warning", "english_leak", f"'{pat}' matched {len(m)}x — i18n missing?")
+            # Show one short context snippet so the bug report points to the
+            # exact location of the leak.
+            mobj = re.search(pat, _lintable_text, flags=re.IGNORECASE)
+            snippet = ""
+            if mobj:
+                start = max(0, mobj.start() - 25)
+                end = min(len(_lintable_text), mobj.end() + 25)
+                snippet = _lintable_text[start:end].replace("\n", " ").strip()
+            add("warning", "english_leak",
+                f"'{pat}' matched {len(m)}x — i18n missing? Context: …{snippet}…")
 
     # ---- 2. Structural ----
     if len(pdf_text) < 1000:
