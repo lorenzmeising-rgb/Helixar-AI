@@ -979,6 +979,99 @@ def estimate_cogs(process_input: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def estimate_cogs_whatif(base_input: Dict[str, Any],
+                         new_scale_kg_per_year: Optional[float] = None,
+                         new_purity_percent: Optional[float] = None,
+                         new_rm_eur_per_kg: Optional[float] = None) -> Dict[str, Any]:
+    """What-if COGS projection for the sensitivity sliders.
+
+    Why this exists separately from estimate_cogs():
+      estimate_cogs() is the calibrated POINT estimate shown in the PDF. For
+      per-molecule overrides it damps the modifiers to 25 % and hard-caps the
+      result at ~1.2×/1.3× of the anchor — correct for the headline number,
+      but it makes every slider move plateau instantly (RM 5→500 €/kg changed
+      nothing). This function instead projects the COGS RELATIVE to the PDF
+      value, applying the *real, smooth, uncapped* economic elasticities so
+      the sliders respond the way a process scientist expects.
+
+    Construction (the key property the user asked for):
+        COGS_whatif = COGS_pdf(base_input) × f_scale × f_purity × f_rm
+      where every factor f == 1.0 exactly at the molecule's original input.
+      → Sliders at default reproduce the PDF number byte-for-byte; only a
+        deliberate change moves the result, and the move is monotone &
+        economically grounded:
+          • RM    — linear in the RM cost share of COGS
+          • scale — smooth log-degressive economy of scale (~−26 %/decade,
+                    calibrated to the engine's own scale bands)
+          • purity— progressive "log-impurity" polishing cost (each extra
+                    nine of purity adds a constant increment, weighted by the
+                    DSP share)
+
+    Returns a dict mirroring estimate_cogs() plus a `whatif_factors` block.
+    Falls back to estimate_cogs() output verbatim if no benchmark exists.
+    """
+    import math as _m
+    base = estimate_cogs(base_input) or {}
+    low0 = base.get("low_eur_per_kg")
+    high0 = base.get("high_eur_per_kg")
+    if low0 is None or high0 is None:
+        return base  # honest unknown — nothing to project from
+
+    breakdown = base.get("breakdown") or {}
+    rm_share = float(breakdown.get("rm", 0.4))
+    dsp_share = float(breakdown.get("dsp", 0.25))
+
+    orig_scale = base_input.get("scale_kg_per_year")
+    orig_purity = base_input.get("desired_purity_percent")
+    orig_rm = base_input.get("raw_material_cost_eur_per_kg")
+
+    # ----- f_scale: smooth log-degressive economy of scale -----
+    f_scale = 1.0
+    if (new_scale_kg_per_year is not None and orig_scale is not None
+            and float(orig_scale) > 0 and float(new_scale_kg_per_year) > 0):
+        # k≈0.13 → each 10× scale-up lowers €/kg by ~26 %, matching the
+        # engine's stepwise _scale_multiplier bands. Bounded gently so an
+        # extreme slider can't run to absurd values.
+        ratio = float(orig_scale) / float(new_scale_kg_per_year)
+        f_scale = ratio ** 0.13
+        f_scale = max(0.3, min(3.0, f_scale))
+
+    # ----- f_purity: progressive log-impurity polishing cost -----
+    def _puri_factor(p: float) -> float:
+        impurity = max((100.0 - float(p)) / 100.0, 1e-4)  # cap at 99.99 %
+        return -_m.log10(impurity)                         # 99 %→2, 99.9 %→3
+    f_purity = 1.0
+    if new_purity_percent is not None and orig_purity is not None:
+        delta = _puri_factor(new_purity_percent) - _puri_factor(orig_purity)
+        f_purity = 1.0 + dsp_share * delta
+        f_purity = max(0.5, f_purity)  # purity can't drive cost below half
+
+    # ----- f_rm: linear in the RM cost share -----
+    f_rm = 1.0
+    if (new_rm_eur_per_kg is not None and orig_rm is not None
+            and float(orig_rm) > 0 and float(new_rm_eur_per_kg) > 0):
+        f_rm = (1.0 - rm_share) + rm_share * (float(new_rm_eur_per_kg) / float(orig_rm))
+        f_rm = max(0.4, f_rm)  # RM share can't take total below a floor
+
+    f_total = f_scale * f_purity * f_rm
+    low = round(low0 * f_total, 2)
+    high = round(high0 * f_total, 2)
+    if low > high:
+        low, high = high, low
+
+    out = dict(base)
+    out["low_eur_per_kg"] = low
+    out["high_eur_per_kg"] = high
+    out["whatif_factors"] = {
+        "scale": round(f_scale, 3),
+        "purity": round(f_purity, 3),
+        "raw_material": round(f_rm, 3),
+        "total": round(f_total, 3),
+    }
+    out["whatif_reference"] = {"low": low0, "high": high0}
+    return out
+
+
 def _unknown_result(reason: str) -> Dict[str, Any]:
     """Honest empty-state when we have no benchmark."""
     return {

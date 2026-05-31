@@ -44,7 +44,7 @@ import sys
 from typing import Any, Dict, List, Optional, Tuple
 
 # --- Engine + calibrated sampling tables (single source of truth) -----------
-from cogs_estimator import estimate_cogs, _MOLECULE_COGS_OVERRIDES
+from cogs_estimator import estimate_cogs, estimate_cogs_whatif, _MOLECULE_COGS_OVERRIDES
 from plausibility_checker import KNOWN_PROCESSES, check_plausibility
 from route_comparison import _SUBTYPE_VIABLE_METHODS, compare_routes
 from decision_engine import DecisionEngine
@@ -261,6 +261,53 @@ def check_monotonic(rng: random.Random, inp: Dict[str, Any],
     return v
 
 
+def check_whatif(inp: Dict[str, Any], mol: Dict[str, str]) -> List[Violation]:
+    """W-laws for the what-if sensitivity projection:
+      W1 continuity — at the original inputs it must equal the PDF value
+      W2 RM monotone — higher raw-material price never lowers COGS
+      W3 scale monotone — bigger scale never raises COGS/kg
+      W4 purity monotone — higher purity never lowers COGS
+    """
+    v: List[Violation] = []
+    name = mol["name"]
+    scale = inp["scale_kg_per_year"]
+    pur = inp["desired_purity_percent"]
+    rm = inp["raw_material_cost_eur_per_kg"]
+
+    pdf = estimate_cogs(inp) or {}
+    lo_pdf, hi_pdf = pdf.get("low_eur_per_kg"), pdf.get("high_eur_per_kg")
+    if lo_pdf is None:
+        return v
+
+    # W1 — continuity at the reference point.
+    ref = estimate_cogs_whatif(inp, scale, pur, rm)
+    if abs((ref.get("low_eur_per_kg") or 0) - lo_pdf) > 0.05 or \
+       abs((ref.get("high_eur_per_kg") or 0) - hi_pdf) > 0.05:
+        v.append(Violation("W1-whatif-continuity", name,
+            f"default whatif {ref.get('low_eur_per_kg')}-{ref.get('high_eur_per_kg')} "
+            f"≠ PDF {lo_pdf}-{hi_pdf}", inp))
+
+    # W2 — RM↑ must not lower COGS.
+    a = estimate_cogs_whatif(inp, scale, pur, rm * 3.0)
+    if (a.get("high_eur_per_kg") or 0) < hi_pdf - 1e-6:
+        v.append(Violation("W2-whatif-rm-monotonic", name,
+            f"RM×3 lowered COGS high ({hi_pdf:.3g} → {a.get('high_eur_per_kg'):.3g})", inp))
+
+    # W3 — scale↑ must not raise COGS/kg.
+    b = estimate_cogs_whatif(inp, scale * 10.0, pur, rm)
+    if (b.get("high_eur_per_kg") or 0) > hi_pdf + 1e-6:
+        v.append(Violation("W3-whatif-scale-monotonic", name,
+            f"scale×10 raised COGS high ({hi_pdf:.3g} → {b.get('high_eur_per_kg'):.3g})", inp))
+
+    # W4 — purity↑ must not lower COGS.
+    if pur < 99.5:
+        c = estimate_cogs_whatif(inp, scale, min(99.95, pur + 0.4), rm)
+        if (c.get("high_eur_per_kg") or 0) < hi_pdf - 1e-6:
+            v.append(Violation("W4-whatif-purity-monotonic", name,
+                f"purity↑ lowered COGS high ({hi_pdf:.3g} → {c.get('high_eur_per_kg'):.3g})", inp))
+    return v
+
+
 def check_plausibility_clean(inp: Dict[str, Any], mol: Dict[str, str]) -> List[Violation]:
     """I7 — a realistic input (viable method, in-range step count) should not
     trip the step-count plausibility warning."""
@@ -333,6 +380,7 @@ def main() -> int:
             n_scenarios += 1
             checks = (check_absolute(inp, mol)
                       + check_monotonic(rng, inp, mol)
+                      + check_whatif(inp, mol)
                       + check_plausibility_clean(inp, mol))
             for vi in checks:
                 violations.append(vi)
@@ -340,7 +388,7 @@ def main() -> int:
 
     print(f"Scenarios evaluated: {n_scenarios}")
     print(f"Per-molecule structural checks: {len(mols)}")
-    print(f"Total invariant checks (approx): {n_scenarios * 7 + len(mols) * 4}")
+    print(f"Total invariant checks (approx): {n_scenarios * 11 + len(mols) * 4}")
     print("-" * 68)
     if not violations:
         print("RESULT:  ✓ 0 violations — all invariants held across every scenario.")

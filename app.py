@@ -1209,9 +1209,14 @@ def show_report_page():
             st.caption(t("sensitivity_section_caption"))
 
             try:
-                from cogs_estimator import estimate_cogs as _est_sens, format_cogs_range as _fmt_sens
+                from cogs_estimator import (
+                    estimate_cogs as _est_sens,
+                    estimate_cogs_whatif as _est_whatif,
+                    format_cogs_range as _fmt_sens,
+                )
             except Exception:
                 _est_sens = None
+                _est_whatif = None
                 _fmt_sens = None
 
             if _est_sens is None:
@@ -1259,15 +1264,19 @@ def show_report_page():
                         help=t("sensitivity_rm_help"),
                     )
 
-                # Build a counterfactual process_input
+                # Build a counterfactual process_input (kept for downstream use)
                 pi_alt = dict(ip)
                 pi_alt["scale_kg_per_year"] = new_kg
                 pi_alt["desired_purity_percent"] = new_pct
                 pi_alt["raw_material_cost_eur_per_kg"] = new_eur
 
-                # Run COGS in the new state
+                # Simulated COGS via the relative what-if projection: it starts
+                # from the PDF value at the original inputs (factors == 1.0) and
+                # applies smooth, uncapped elasticities for the slider deltas —
+                # so RM / purity / scale moves are actually visible (the capped
+                # estimate_cogs plateaus instantly for the 79 override molecules).
                 try:
-                    cogs_alt = _est_sens(pi_alt) or {}
+                    cogs_alt = _est_whatif(ip, new_kg, new_pct, new_eur) or {}
                 except Exception:
                     cogs_alt = {}
                 lo_alt = cogs_alt.get("low_eur_per_kg")
@@ -1307,10 +1316,11 @@ def show_report_page():
                     sample_scales = [10 ** (i * 0.5 - 2) for i in range(0, 17)]  # 0.01 → 10^6
                     rows = []
                     for s in sample_scales:
-                        pi_s = dict(pi_alt)
-                        pi_s["scale_kg_per_year"] = s
                         try:
-                            cs = _est_sens(pi_s) or {}
+                            # What-if projection: vary scale, hold the slider's
+                            # purity/RM — shows the real economy-of-scale curve
+                            # instead of the capped (flat) point estimate.
+                            cs = _est_whatif(ip, s, new_pct, new_eur) or {}
                             rows.append({
                                 "Skala (kg/Jahr)": s,
                                 "COGS low": cs.get("low_eur_per_kg"),
