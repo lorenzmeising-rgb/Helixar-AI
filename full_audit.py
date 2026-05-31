@@ -618,6 +618,12 @@ def main() -> int:
     print()
     print(f"  CSV: {OUTPUT_DIR / 'audit_summary.csv'}")
     print(f"  MD : {OUTPUT_DIR / 'bug_report.md'}")
+    # Non-zero exit on critical/error so CI fails loudly. Warnings are
+    # advisory and do not fail the build.
+    blocking = by_sev.get("critical", 0) + by_sev.get("error", 0)
+    if blocking:
+        print(f"\nFAIL: {blocking} blocking finding(s) (critical/error).")
+        return 1
     return 0
 
 

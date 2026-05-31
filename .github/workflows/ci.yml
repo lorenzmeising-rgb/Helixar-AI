@@ -1,0 +1,44 @@
+name: CI
+
+# Engine-Schutz: bei jedem Push/PR laufen die zwei Gates, die verhindern,
+# dass eine Engine-Änderung still etwas kaputt macht:
+#   1. full_audit.py        — generiert alle 79 Molekül-PDFs + Lint-Checks
+#                             (failt bei critical/error-Findings)
+#   2. invariant_sweep.py   — ~5000 realistische Molekül×Input-Szenarien
+#                             gegen die bioprozess-fachlichen Sanity-Gesetze
+#                             (failt bei jeder Invarianten-Verletzung)
+
+on:
+  push:
+    branches: [main, feedback-runde-1]
+  pull_request:
+  workflow_dispatch:   # manuell auslösbar über die Actions-Tab
+
+jobs:
+  engine-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          # pypdf wird von full_audit.py zur PDF-Text-Extraktion genutzt,
+          # ist aber nicht Laufzeit-Abhängigkeit der App.
+          pip install pypdf
+
+      - name: Full audit (79 molecules — PDF generation + lint)
+        run: python3 full_audit.py
+
+      - name: Invariant sweep (~5000 plausible scenarios)
+        run: python3 invariant_sweep.py 64
