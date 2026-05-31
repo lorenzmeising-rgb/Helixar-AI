@@ -55,6 +55,20 @@ TRANSLATIONS = {
 
     # ====== Molekül-Block (oben) ======
     "target_molecule": {"de": "Zielmolekül", "en": "Target Molecule"},
+    "target_molecule_help": {
+        "de": "Wähle ein Molekül aus der Datenbank (79 kalibrierte Einträge) "
+              "oder „Anderes Molekül…“ für eine freie Eingabe.",
+        "en": "Pick a molecule from the database (79 calibrated entries) or "
+              "“Other molecule…” to enter your own.",
+    },
+    "custom_molecule_option": {
+        "de": "✏️  Anderes Molekül (manuell eingeben)…",
+        "en": "✏️  Other molecule (enter manually)…",
+    },
+    "target_molecule_custom_label": {
+        "de": "Eigenes Zielmolekül",
+        "en": "Custom target molecule",
+    },
     "molecule_type": {"de": "Molekültyp", "en": "Molecule Type"},
     "molecule_subtype": {"de": "Molekül-Untertyp (optional)", "en": "Molecule Subtype (optional)"},
 
@@ -454,6 +468,18 @@ TRANSLATIONS = {
     "mode_comparison_caption": {
         "de": "Vergleicht alle plausiblen Produktionsrouten für dieses Molekül parallel und liefert eine quantifizierte Engine-Empfehlung.",
         "en": "Compares all plausible production routes for this molecule in parallel and delivers a quantified engine recommendation.",
+    },
+
+    # Optional route-comparison section appended to the recommendation PDF
+    "append_comparison_label": {
+        "de": "Routenvergleich an den Report anhängen",
+        "en": "Append route comparison to the report",
+    },
+    "append_comparison_help": {
+        "de": "Hängt eine Vergleichs-Sektion (alle plausiblen Routen mit Cost/Risk/Effizienz/COGS, "
+              "Detail je Route und quantifizierter Engine-Empfehlung) an das Ende der Empfehlungs-PDF an.",
+        "en": "Appends a comparison section (all plausible routes with cost/risk/efficiency/COGS, "
+              "per-route detail and a quantified engine recommendation) to the end of the recommendation PDF.",
     },
 
     # Process Comparison page

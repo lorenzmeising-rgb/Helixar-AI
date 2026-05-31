@@ -136,11 +136,19 @@ def _check_concrete_hint(mname: str, method: str) -> Tuple[bool, int, Optional[s
     if isinstance(steps, dict):
         steps = steps.get("de") or steps.get("en") or []
     n = len(steps) if isinstance(steps, list) else 0
-    # Extract yield range as readable string
-    y = hint.get("yield_range_percent") or hint.get("yield_range_percent_w_w")
+    # Extract yield range as a readable string. Chemical and extraction
+    # routes store a percentage yield (yield_range_percent /
+    # yield_range_percent_w_w); biotechnological routes store a titer in
+    # g/L (yield_range_g_per_l). The latter was previously ignored, which
+    # left the "Yield" column blank ("—") for every fermentation route
+    # (50 of the 79 molecules).
+    y_pct = hint.get("yield_range_percent") or hint.get("yield_range_percent_w_w")
+    y_gl = hint.get("yield_range_g_per_l")
     yield_str = None
-    if isinstance(y, (list, tuple)) and len(y) == 2:
-        yield_str = f"{y[0]}–{y[1]} %"
+    if isinstance(y_pct, (list, tuple)) and len(y_pct) == 2:
+        yield_str = f"{y_pct[0]}–{y_pct[1]} %"
+    elif isinstance(y_gl, (list, tuple)) and len(y_gl) == 2:
+        yield_str = f"{y_gl[0]}–{y_gl[1]} g/L"
     return n > 0, n, yield_str
 
 

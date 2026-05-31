@@ -2008,6 +2008,24 @@ def export_report_pdf(
         elems.append(Spacer(1, 6))
         elems.append(Paragraph(_link_note_en if lang == "en" else _link_note_de, normal))
 
+    # ----- Optional: appended route-comparison section -----
+    # When the caller sets extras['include_comparison'] and provides
+    # extras['comparison_input'], append the full route-comparison body
+    # (overview table + per-route detail + engine analysis) so the user gets
+    # the strategic multi-route comparison inside the same operational
+    # report — no separate PDF, no redundant cover page.
+    if extras.get("include_comparison") and extras.get("comparison_input"):
+        try:
+            from comparison_report import build_comparison_flowables
+            elems.append(PageBreak())
+            _cmp_heading = "Route Comparison" if lang == "en" else "Routenvergleich"
+            elems.extend(build_comparison_flowables(
+                extras["comparison_input"], lang=lang, heading=_cmp_heading,
+            ))
+        except Exception:
+            # The comparison is a value-add; never let it break the core report.
+            pass
+
     # ----- Final page: Important Notices (legal / IP / liability / sources) -----
     elems.append(PageBreak())
     elems.append(Paragraph(L("notices_title"), styles["ExecTitle"]))

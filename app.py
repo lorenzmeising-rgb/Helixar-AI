@@ -321,37 +321,12 @@ def show_start_page():
     st.title(t("app_title"))
     st.caption(t("app_caption"))
 
-    # Mode toggle: regular recommendation vs. process comparison.
-    # Both flows share the molecule input but produce different outputs
-    # (single-route recommendation PDF vs. multi-route comparison PDF).
-    _mode_keys = ["recommendation", "comparison"]
-    _mode_labels = {
-        "recommendation": f"✨  {t('mode_recommendation_label')}",
-        "comparison":     f"📊  {t('mode_comparison_label')}",
-    }
-    selected_mode = st.radio(
-        t("mode_selector_label"),
-        options=_mode_keys,
-        format_func=lambda k: _mode_labels[k],
-        horizontal=True,
-        key="start_page_mode",
-        label_visibility="collapsed",
-    )
-    # Short caption that explains what each mode produces
-    _mode_captions = {
-        "recommendation": t("mode_recommendation_caption"),
-        "comparison":     t("mode_comparison_caption"),
-    }
-    st.caption(_mode_captions[selected_mode])
-    st.markdown("---")
-
-    # Branch: comparison mode → render the dedicated comparison flow
-    # inline (re-uses show_comparison_page()) and return early.
-    if selected_mode == "comparison":
-        show_comparison_page(_skip_title=True)
-        return
-
-    # ----- Recommendation flow (original behaviour) -----
+    # Single unified flow: the recommendation report. The former
+    # "Prozessvergleich" mode is no longer a separate output — the route
+    # comparison can now be appended directly to the recommendation PDF via
+    # a checkbox next to the export buttons (avoids a redundant cover page
+    # and a thin standalone document).
+    # ----- Recommendation flow -----
     st.subheader(t("describe_process_header"))
     st.markdown(t("describe_process_intro"))
     # Show autofill notice (if autofill recently occurred)
@@ -422,7 +397,50 @@ def show_start_page():
         # Auch Industrie-Defaults für die anderen Felder anwenden.
         _apply_type_defaults()
 
+    def _autofill_from_entry(entry, name):
+        """Apply a recognised DB entry's type/subtype/SMILES/representation to
+        the form fields. Shared by the dropdown selection and the custom
+        free-text path."""
+        try:
+            mt = entry.get("molecule_type") or "small_molecule"
+            # Internal type code is stored directly (the selectbox uses
+            # internal codes as option values).
+            st.session_state.proc_molecule_type_v2 = mt
+            subtype = entry.get("molecule_subtype")
+            st.session_state.proc_molecule_subtype_v2 = subtype
+            st.session_state.proc_smiles = entry.get("smiles")
+            # Carry the full entry through so downstream stages (PDF, report)
+            # can show the proper representation (sequence / external_id) when
+            # SMILES is not applicable (proteins, complex peptides).
+            st.session_state.proc_db_entry = entry
+            st.session_state.proc_last_autofill_name = name
+            rep = get_representation_label(entry)
+            st.session_state.proc_autofill_msg = (
+                f"Molekül erkannt: {mt} / {subtype or 'None'} — {rep}"
+            )
+        except Exception:
+            pass
+
+    def _on_molecule_select():
+        """Dropdown selection of a known DB molecule → autofill its metadata.
+        Streamlit runs on_change callbacks at the start of the rerun (before
+        any widgets are instantiated), so writing the type/subtype session
+        keys here is safe."""
+        sel = st.session_state.get("proc_molecule_select")
+        if not sel or sel == t("custom_molecule_option"):
+            return
+        try:
+            entry = get_entry_by_name(sel)
+        except Exception:
+            entry = None
+        if entry:
+            # Picking from the dropdown is an explicit choice → unlock so the
+            # new molecule's metadata replaces any prior manual override.
+            st.session_state.proc_autofill_locked = False
+            _autofill_from_entry(entry, sel)
+
     def _try_autofill():
+        """Free-text custom molecule → best-effort match against the DB."""
         name = str(st.session_state.get("proc_molecule_name") or "").strip()
         if not name:
             return
@@ -431,7 +449,6 @@ def show_start_page():
             st.session_state.proc_autofill_locked = False
         if st.session_state.proc_autofill_locked:
             return
-        # exact lookup
         entry = None
         try:
             entry = get_entry_by_name(name)
@@ -448,29 +465,44 @@ def show_start_page():
             except Exception:
                 entry = None
         if entry:
-            try:
-                mt = entry.get("molecule_type") or "small_molecule"
-                # Internal type code is stored directly (no label mapping needed
-                # since the selectbox now uses internal codes as option values).
-                st.session_state.proc_molecule_type_v2 = mt
-                subtype = entry.get("molecule_subtype")
-                # subtype value is stored directly; None when not set.
-                st.session_state.proc_molecule_subtype_v2 = subtype
-                st.session_state.proc_smiles = entry.get("smiles")
-                # Carry the full entry through so downstream stages (PDF, report)
-                # can show the proper representation (sequence / external_id) when
-                # SMILES is not applicable (proteins, complex peptides).
-                st.session_state.proc_db_entry = entry
-                st.session_state.proc_last_autofill_name = name
-                # Build a representation-aware confirmation message.
-                rep = get_representation_label(entry)
-                st.session_state.proc_autofill_msg = (
-                    f"Molekül erkannt: {mt} / {subtype or 'None'} — {rep}"
-                )
-            except Exception:
-                pass
+            _autofill_from_entry(entry, name)
 
-    molecule_name = st.text_input(t("target_molecule"), value="", key="proc_molecule_name", on_change=_try_autofill)
+    # Target molecule picker: dropdown of all DB molecules + a free-text
+    # "custom" option. The dropdown makes the 79 calibrated molecules one
+    # click away (like the old route-comparison picker); the custom option
+    # preserves free entry of molecules not yet in the DB (which the P4
+    # cluster-fallback path is built to handle).
+    _db_names = sorted([m["name"] for m in MOLECULE_DATABASE])
+    _CUSTOM_OPT = t("custom_molecule_option")
+    _mol_options = [_CUSTOM_OPT] + _db_names
+    _sel_mol = st.selectbox(
+        t("target_molecule"),
+        options=_mol_options,
+        index=(_mol_options.index("Vanillin") if "Vanillin" in _mol_options else 0),
+        key="proc_molecule_select",
+        on_change=_on_molecule_select,
+        help=t("target_molecule_help"),
+    )
+    if _sel_mol == _CUSTOM_OPT:
+        molecule_name = st.text_input(
+            t("target_molecule_custom_label"),
+            value="",
+            key="proc_molecule_name",
+            on_change=_try_autofill,
+        )
+    else:
+        molecule_name = _sel_mol
+        # on_change does not fire on the initial render, so autofill the
+        # currently-selected molecule's metadata here too — unless the user
+        # has manually overridden type/subtype (autofill locked).
+        if (st.session_state.get("proc_last_autofill_name") != _sel_mol
+                and not st.session_state.get("proc_autofill_locked")):
+            try:
+                _e0 = get_entry_by_name(_sel_mol)
+            except Exception:
+                _e0 = None
+            if _e0:
+                _autofill_from_entry(_e0, _sel_mol)
 
     # Molecule type / subtype directly under target molecule.
     # Auto-filled when an entry is recognised; manual change locks the autofill
@@ -1439,6 +1471,16 @@ def show_report_page():
     # PDF controls: Vorschau anzeigen & Als PDF exportieren
     report_text = st.session_state.german_report or ""
 
+    # Optional: append the multi-route comparison section to the PDF.
+    # Toggling this invalidates any cached PDF so the next preview/export
+    # reflects the new choice.
+    st.checkbox(
+        t("append_comparison_label"),
+        key="append_comparison",
+        help=t("append_comparison_help"),
+        on_change=lambda: st.session_state.pop("pdf_bytes", None),
+    )
+
     col_pdf_1, col_pdf_2 = st.columns([1, 1])
     preview_generated = False
 
@@ -1459,6 +1501,9 @@ def show_report_page():
                                 "plausibility_warnings": st.session_state.get("plausibility_warnings"),
                                 "plausibility_sources": st.session_state.get("plausibility_sources"),
                             }
+                            if st.session_state.get("append_comparison"):
+                                pdf_extras["include_comparison"] = True
+                                pdf_extras["comparison_input"] = st.session_state.get("input_context")
                             pdf_bytes = export_report_pdf(
                                 report_text, bp, None,
                                 title=t("pdf_title_default"),
@@ -1497,6 +1542,9 @@ def show_report_page():
                             "plausibility_warnings": st.session_state.get("plausibility_warnings"),
                             "plausibility_sources": st.session_state.get("plausibility_sources"),
                         }
+                        if st.session_state.get("append_comparison"):
+                            pdf_extras["include_comparison"] = True
+                            pdf_extras["comparison_input"] = st.session_state.get("input_context")
                         pdf_bytes = export_report_pdf(
                             report_text, bp, None,
                             title=t("pdf_title_default"),
